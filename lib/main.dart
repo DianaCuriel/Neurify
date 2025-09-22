@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:neurify/Calendario.dart';
 // import 'home_page.dart';
-import 'app_theme.dart';
+import 'Fijo/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: "Mi App",
       theme: AppTheme.themeData, // 🌟 aquí aplicamos el tema
-      home: const Calendario(),
+      home: const CalendarioPage(),
     );
   }
 }
