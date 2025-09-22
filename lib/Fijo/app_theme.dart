@@ -7,6 +7,7 @@ class AppTheme {
   ); // Azul oscuro (como en tu header)
   static const Color backgroundColor = Color(0xFFF2F2F2); // Gris claro
   static const Color accentColor = Colors.black87;
+  static const Color caja = Colors.white;
 
   // 📖 Tipografía
   static const TextStyle titleStyle = TextStyle(
@@ -24,6 +25,19 @@ class AppTheme {
     fontSize: 14,
     color: Colors.black87,
   );
+
+  static const TextStyle TituloBoton = TextStyle(
+    fontSize: 16,
+    color: Colors.white,
+  );
+
+  static Widget subtitleText(String text) {
+    return Text(text, style: sutittleStyle, textAlign: TextAlign.center);
+  }
+
+  static Widget tituloBoton(String text) {
+    return Text(text, style: TituloBoton);
+  }
 
   static ThemeData themeData = ThemeData(
     primaryColor: primaryColor,
