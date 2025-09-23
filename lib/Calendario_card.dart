@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'Fijo/app_theme.dart';
+import 'Modelos/Calendario_model.dart';
+import 'package:intl/intl.dart';
 
 typedef OnDateSelected = void Function(DateTime date);
 
@@ -7,57 +9,76 @@ class CalendarCard extends StatefulWidget {
   final DateTime? initialDate;
   final OnDateSelected? onDateSelected;
   final Color primaryColor;
+  final List<Cliente> citas;
 
   const CalendarCard({
     Key? key,
     this.initialDate,
     this.onDateSelected,
     this.primaryColor = AppTheme.primaryColor,
+    this.citas = const [],
   }) : super(key: key);
 
   @override
-  _CalendarCardState createState() => _CalendarCardState();
+  State<CalendarCard> createState() => _CalendarCardState();
 }
 
 class _CalendarCardState extends State<CalendarCard> {
-  late DateTime _selectedDate;
+  late DateTime _monday; // lunes de la semana
+  Map<String, Cliente> citasMap = {};
 
-  final List<String> _days = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
-  final List<String> _hours = [
-    "12 AM",
-    "1 AM",
-    "2 AM",
-    "3 AM",
-    "4 AM",
-    "5 AM",
-    "6 AM",
-    "7 AM",
-    "8 AM",
-    "9 AM",
-    "10 AM",
-    "11 AM",
-    "12 PM",
-    "1 PM",
-    "2 PM",
-    "3 PM",
-    "4 PM",
-    "5 PM",
-    "6 PM",
-    "7 PM",
-    "8 PM",
-    "9 PM",
-    "10 PM",
-    "11 PM",
-  ];
+  final List<int> _hours = List.generate(24, (i) => i);
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.initialDate ?? DateTime.now();
+    final now = widget.initialDate ?? DateTime.now();
+    _monday = now.subtract(Duration(days: now.weekday - 1));
+    _loadCitas(widget.citas);
+  }
+
+  // Método para cargar citas en el mapa
+  void _loadCitas(List<Cliente> lista) {
+    citasMap.clear();
+    for (var cita in lista) {
+      try {
+        final fecha = DateFormat("dd/MM/yyyy").parse(cita.fecha);
+        final horaParts = cita.hora.split(":");
+        final h = int.parse(horaParts[0]);
+        final m = int.parse(horaParts[1]);
+        final dt = DateTime(fecha.year, fecha.month, fecha.day, h, m);
+        final key = DateFormat("dd-MM-yyyy HH:mm").format(dt);
+        citasMap[key] = cita;
+      } catch (e) {
+        debugPrint("Error parseando cita: $e");
+      }
+    }
+  }
+
+  // Se llama cuando el widget padre cambia la lista de citas
+  @override
+  void didUpdateWidget(covariant CalendarCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.citas != widget.citas) {
+      _loadCitas(widget.citas);
+      setState(() {});
+    }
+  }
+
+  List<DateTime> _getWeekDays() {
+    return List.generate(7, (i) => _monday.add(Duration(days: i)));
+  }
+
+  String _formatHour(int hour24) {
+    final period = hour24 >= 12 ? "PM" : "AM";
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    return "$hour12 $period";
   }
 
   @override
   Widget build(BuildContext context) {
+    final weekDays = _getWeekDays();
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
@@ -67,22 +88,15 @@ class _CalendarCardState extends State<CalendarCard> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Icono y título
-            Stack(
-              alignment: Alignment.center, // centra el texto
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, color: widget.primaryColor),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-                AppTheme.subtitleText("VISTA SEMANAL"),
-              ],
+            Text(
+              "Semana del ${DateFormat("d MMM yyyy").format(weekDays.first)}"
+              " - ${DateFormat("d MMM yyyy").format(weekDays.last)}",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accentColor,
+              ),
             ),
-
             const SizedBox(height: 16),
-            // Tabla de horas vs días
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.vertical,
@@ -92,16 +106,16 @@ class _CalendarCardState extends State<CalendarCard> {
                     border: TableBorder.all(color: AppTheme.caja),
                     defaultColumnWidth: const IntrinsicColumnWidth(),
                     children: [
-                      // Encabezados de días
+                      // Encabezados
                       TableRow(
                         children: [
-                          const SizedBox(), // esquina vacía
-                          for (var day in _days)
+                          const SizedBox(),
+                          for (var day in weekDays)
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Center(
                                 child: Text(
-                                  day,
+                                  "${DateFormat('EEE').format(day)} ${day.day}",
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.accentColor,
@@ -115,56 +129,69 @@ class _CalendarCardState extends State<CalendarCard> {
                       for (var hour in _hours)
                         TableRow(
                           children: [
-                            // Hora
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                hour,
+                                _formatHour(hour),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.accentColor,
                                 ),
                               ),
                             ),
-                            // Solo un contenedor por fila (por ejemplo para el primer día)
-                            GestureDetector(
-                              onTap: () {
-                                final selectedDate = DateTime(
-                                  _selectedDate.year,
-                                  _selectedDate.month,
-                                  _selectedDate.day, // solo el primer día
-                                );
-                                if (widget.onDateSelected != null) {
-                                  widget.onDateSelected!(selectedDate);
-                                }
-                              },
-                              child: Container(
-                                height: 50,
-                                width: 70, // ancho fijo
-                                margin: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: widget.primaryColor.withOpacity(0.8),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    "Cita", // ya no repite i+1
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
+                            for (var day in weekDays)
+                              Builder(
+                                builder: (context) {
+                                  final dt = DateTime(
+                                    day.year,
+                                    day.month,
+                                    day.day,
+                                    hour,
+                                  );
+                                  final key = DateFormat(
+                                    "dd-MM-yyyy HH:mm",
+                                  ).format(dt);
+                                  final cita = citasMap[key];
+
+                                  if (cita != null) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        if (widget.onDateSelected != null) {
+                                          widget.onDateSelected!(dt);
+                                        }
+                                      },
+                                      child: Container(
+                                        height: 50,
+                                        width: 70,
+                                        margin: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: widget.primaryColor
+                                              .withOpacity(0.8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            cita.nombre,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    return const SizedBox(
+                                      height: 50,
+                                      width: 70,
+                                    );
+                                  }
+                                },
                               ),
-                            ),
-                            // Puedes repetirlo manualmente para cada día si quieres
-                            // o dejar SizedBox() para las otras celdas vacías
-                            for (var i = 1; i < _days.length; i++)
-                              const SizedBox(height: 50, width: 70),
                           ],
                         ),
-
-                      // Filas de horas
                     ],
                   ),
                 ),

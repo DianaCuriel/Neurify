@@ -3,9 +3,32 @@ import 'Fijo/Appbar.dart';
 import 'Fijo/BottomNavigator.dart';
 import 'Calendario_card.dart';
 import 'Fijo/app_theme.dart';
+import 'Modelos/Calendario_model.dart';
 
-class CalendarioPage extends StatelessWidget {
+class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});
+
+  @override
+  _CalendarioPageState createState() => _CalendarioPageState();
+}
+
+class _CalendarioPageState extends State<CalendarioPage> {
+  List<Cliente> citas = [
+    Cliente(
+      nombre: "Juan Pérez",
+      asunto: 'prueba',
+      numero: 'prueba',
+      fecha: "22/09/2025",
+      hora: "14:00",
+    ),
+    Cliente(
+      nombre: "María López",
+      asunto: 'prueba',
+      numero: 'prueba',
+      fecha: "23/09/2025",
+      hora: "10:00",
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -13,9 +36,8 @@ class CalendarioPage extends StatelessWidget {
       appBar: const MiAppBar(),
       body: Center(
         child: FractionallySizedBox(
-          // widthFactor: 0.9,
           heightFactor: 0.6,
-          child: const CalendarCard(),
+          child: CalendarCard(citas: citas, initialDate: DateTime.now()),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -25,23 +47,18 @@ class CalendarioPage extends StatelessWidget {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (context) {
+              final nombreController = TextEditingController();
+              final asuntoController = TextEditingController();
+              final numeroController = TextEditingController();
+              final fechaController = TextEditingController();
+              final horaController = TextEditingController();
+
               return DraggableScrollableSheet(
                 initialChildSize: 0.4,
                 minChildSize: 0.2,
                 maxChildSize: 0.9,
                 expand: false,
                 builder: (context, scrollController) {
-                  final TextEditingController nombreController =
-                      TextEditingController();
-                  final TextEditingController asuntoController =
-                      TextEditingController();
-                  final TextEditingController numeroController =
-                      TextEditingController();
-                  final TextEditingController fechaController =
-                      TextEditingController();
-                  final TextEditingController horaController =
-                      TextEditingController();
-
                   return StatefulBuilder(
                     builder: (context, setState) {
                       return Container(
@@ -57,7 +74,6 @@ class CalendarioPage extends StatelessWidget {
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               children: [
-                                // Indicador visual
                                 Container(
                                   width: 40,
                                   height: 4,
@@ -67,7 +83,6 @@ class CalendarioPage extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
-                                // Fila de cierre y guardar
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -78,19 +93,18 @@ class CalendarioPage extends StatelessWidget {
                                     ),
                                     ElevatedButton(
                                       onPressed: () {
-                                        // Crear un mapa con los datos
-                                        final datos = {
-                                          'nombre': nombreController.text,
-                                          'asunto': asuntoController.text,
-                                          'numero': numeroController.text,
-                                          'fecha': fechaController.text,
-                                          'hora': horaController.text,
-                                        };
-
-                                        Navigator.pop(
-                                          context,
-                                          datos,
-                                        ); // Enviar datos al cerrar
+                                        // Crear cliente y añadir a la lista
+                                        setState(() {
+                                          final nuevaCita = Cliente(
+                                            nombre: nombreController.text,
+                                            asunto: asuntoController.text,
+                                            numero: numeroController.text,
+                                            fecha: fechaController.text,
+                                            hora: horaController.text,
+                                          );
+                                          citas.add(nuevaCita);
+                                        });
+                                        Navigator.pop(context);
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppTheme.primaryColor,
@@ -99,57 +113,47 @@ class CalendarioPage extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 20),
                                 AppTheme.subtitleText('Datos personales'),
                                 const SizedBox(height: 8),
-
                                 TextField(
                                   controller: nombreController,
                                   decoration: const InputDecoration(
                                     hintText: "Nombre del cliente",
-                                    counterText: "0/20",
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.all(
                                         Radius.circular(8),
                                       ),
                                     ),
                                   ),
-                                  maxLength: 20,
                                 ),
                                 const SizedBox(height: 8),
                                 TextField(
                                   controller: asuntoController,
                                   decoration: const InputDecoration(
                                     hintText: "Asunto",
-                                    counterText: "0/20",
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.all(
                                         Radius.circular(8),
                                       ),
                                     ),
                                   ),
-                                  maxLength: 20,
                                 ),
                                 const SizedBox(height: 8),
                                 TextField(
                                   controller: numeroController,
                                   decoration: const InputDecoration(
                                     hintText: "Número",
-                                    counterText: "0/20",
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.all(
                                         Radius.circular(8),
                                       ),
                                     ),
                                   ),
-                                  maxLength: 20,
                                 ),
                                 const SizedBox(height: 20),
                                 AppTheme.subtitleText('Datos del día'),
                                 const SizedBox(height: 8),
-
-                                // Fecha y hora
                                 TextField(
                                   controller: fechaController,
                                   readOnly: true,
@@ -163,7 +167,7 @@ class CalendarioPage extends StatelessWidget {
                                     ),
                                   ),
                                   onTap: () async {
-                                    DateTime? fecha = await showDatePicker(
+                                    final fecha = await showDatePicker(
                                       context: context,
                                       initialDate: DateTime.now(),
                                       firstDate: DateTime(2000),
@@ -191,7 +195,7 @@ class CalendarioPage extends StatelessWidget {
                                     ),
                                   ),
                                   onTap: () async {
-                                    TimeOfDay? hora = await showTimePicker(
+                                    final hora = await showTimePicker(
                                       context: context,
                                       initialTime: TimeOfDay.now(),
                                     );
@@ -215,25 +219,12 @@ class CalendarioPage extends StatelessWidget {
                 },
               );
             },
-          ).then((datos) {
-            if (datos != null) {
-              // Aquí recibes los datos cuando el modal se cierra con "Guardar"
-              print("Nombre: ${datos['nombre']}");
-              print("Asunto: ${datos['asunto']}");
-              print("Número: ${datos['numero']}");
-              print("Fecha: ${datos['fecha']}");
-              print("Hora: ${datos['hora']}");
-
-              // Por ejemplo, enviar los datos a otra página
-              // Navigator.push(context, MaterialPageRoute(builder: (_) => OtraPagina(datos: datos)));
-            }
-          });
+          );
         },
         tooltip: 'Agregar',
         child: const Icon(Icons.add, color: Colors.white),
         backgroundColor: AppTheme.primaryColor,
       ),
-
       bottomNavigationBar: const MiBottomNav(),
     );
   }
