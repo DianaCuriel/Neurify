@@ -19,14 +19,14 @@ class _CalendarioPageState extends State<CalendarioPage> {
       asunto: 'prueba',
       numero: 'prueba',
       fecha: "22/09/2025",
-      hora: "14:00",
+      hora: "2:00",
     ),
     Cliente(
       nombre: "María López",
       asunto: 'prueba',
       numero: 'prueba',
       fecha: "23/09/2025",
-      hora: "10:00",
+      hora: "1:00",
     ),
   ];
 
