@@ -1,5 +1,7 @@
+//#2.a.1
 import 'package:flutter/material.dart';
 
+//#2.a.2
 class AppTheme {
   // 🎨 Paleta de colores
   static const Color primaryColor = Color(
