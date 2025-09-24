@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'Fijo/Appbar.dart';
-import 'Fijo/BottomNavigator.dart';
+import '../Fijo/Appbar.dart';
+import '../Fijo/BottomNavigator.dart';
 import 'Calendario_card.dart';
-import 'Fijo/app_theme.dart';
-import 'Modelos/Calendario_model.dart';
+import '../Fijo/app_theme.dart';
+import '../Modelos/Calendario_model.dart';
 
 class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});

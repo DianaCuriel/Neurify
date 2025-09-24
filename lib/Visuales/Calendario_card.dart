@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'Fijo/app_theme.dart';
-import 'Modelos/Calendario_model.dart';
+import '../Fijo/app_theme.dart';
+import '../Modelos/Calendario_model.dart';
 
 typedef OnDateSelected = void Function(DateTime date);
 

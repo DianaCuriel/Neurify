@@ -1,11 +1,14 @@
+// #1.1
 import 'package:flutter/material.dart';
-import 'package:neurify/Calendario.dart';
+import 'package:neurify/Visuales/Calendario.dart';
 import 'Fijo/app_theme.dart';
 
+//1.2
 void main() {
   runApp(const MyApp());
 }
 
+//1.3
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -13,8 +16,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Mi App",
-      theme: AppTheme.themeData, // 🌟 aquí aplicamos el tema
+      title: "Neurify App",
+      theme: AppTheme.themeData,
       home: const CalendarioPage(),
     );
   }
