@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:neurify/Calendario.dart';
-// import 'home_page.dart';
 import 'Fijo/app_theme.dart';
 
 void main() {

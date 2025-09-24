@@ -13,13 +13,15 @@ class CalendarioPage extends StatefulWidget {
 }
 
 class _CalendarioPageState extends State<CalendarioPage> {
+  bool _isMonthlyView = false;
+
   List<Cliente> citas = [
     Cliente(
       nombre: "Juan Pérez",
       asunto: 'prueba',
       numero: 'prueba',
       fecha: "22/09/2025",
-      hora: "2:00",
+      hora: "3:00",
     ),
     Cliente(
       nombre: "María López",
@@ -35,9 +37,23 @@ class _CalendarioPageState extends State<CalendarioPage> {
     return Scaffold(
       appBar: const MiAppBar(),
       body: Center(
-        child: FractionallySizedBox(
-          heightFactor: 0.6,
-          child: CalendarCard(citas: citas, initialDate: DateTime.now()),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height:
+              _isMonthlyView
+                  ? MediaQuery.of(context).size.height * 0.75
+                  : MediaQuery.of(context).size.height * 0.55,
+          child: CalendarCard(
+            citas: citas,
+            initialDate: DateTime.now(),
+            isMonthlyView: _isMonthlyView,
+            onToggleView: () {
+              setState(() {
+                _isMonthlyView = !_isMonthlyView;
+              });
+            },
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
