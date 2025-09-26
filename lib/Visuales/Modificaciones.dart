@@ -1,52 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:neurify/Visuales/Modificaciones_card.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/Appbar.dart';
 import '../Fijo/BottomNavigator.dart';
-import 'Calendario_card.dart';
 import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
-import 'DatosXdia_card.dart';
+import '../Modelos/Modificaciones_model.dart';
 
-class CalendarioPage extends StatefulWidget {
-  const CalendarioPage({super.key});
+class ModificacionesPage extends StatefulWidget {
+  const ModificacionesPage({super.key});
 
   @override
-  _CalendarioPageState createState() => _CalendarioPageState();
+  _ModificacionesPageState createState() => _ModificacionesPageState();
 }
 
-class _CalendarioPageState extends State<CalendarioPage> {
+class _ModificacionesPageState extends State<ModificacionesPage> {
   bool _isMonthlyView = false;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CalendarioModel(),
+      create: (_) => ModificacionesModel(),
       child: Scaffold(
-        appBar: const MiAppBar(title: "Calendario"),
+        appBar: const MiAppBar(title: "Bloqueos"),
         body: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(
-                height:
-                    _isMonthlyView
-                        ? MediaQuery.of(context).size.height * 0.7
-                        : MediaQuery.of(context).size.height * 0.5,
-                child: CalendarCard(
-                  initialDate: DateTime.now(),
-                  isMonthlyView: _isMonthlyView,
-                  onToggleView: () {
-                    setState(() {
-                      _isMonthlyView = !_isMonthlyView;
-                    });
-                  },
-                  // ya no se pasa `citas`, lo lee del modelo
-                ),
-              ),
-              const SizedBox(height: 10),
-              const DatosxdiaCard(),
-            ],
-          ),
+          child: Column(children: [const ModificacionesCard()]),
         ),
+
         floatingActionButton: FloatingActionButton(
           onPressed: () {
             showModalBottomSheet(
@@ -54,9 +33,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
               builder: (context) {
-                final nombreController = TextEditingController();
-                final asuntoController = TextEditingController();
-                final numeroController = TextEditingController();
+                final tituloController = TextEditingController();
                 final fechaController = TextEditingController();
                 final horaController = TextEditingController();
 
@@ -104,15 +81,13 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                               selectedHora!.minute,
                                             );
 
-                                            final nuevaCita = Cliente(
-                                              nombre: nombreController.text,
-                                              asunto: asuntoController.text,
-                                              numero: numeroController.text,
+                                            final nuevaCita = Modificiones(
+                                              titulo: tituloController.text,
                                               fechaHora: fechaHoraFinal,
                                             );
 
                                             context
-                                                .read<CalendarioModel>()
+                                                .read<ModificacionesModel>()
                                                 .addCita(nuevaCita);
 
                                             Navigator.pop(context);
@@ -127,45 +102,20 @@ class _CalendarioPageState extends State<CalendarioPage> {
                                     ],
                                   ),
                                   const SizedBox(height: 20),
-                                  AppTheme.subtitleText('Datos personales'),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: nombreController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Nombre del cliente",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: asuntoController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Asunto",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: numeroController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Número",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
                                   AppTheme.subtitleText('Datos del día'),
+                                  const SizedBox(height: 20),
+                                  TextField(
+                                    controller: tituloController,
+                                    decoration: const InputDecoration(
+                                      hintText: "Agregar titulo",
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(8),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
                                   const SizedBox(height: 8),
                                   TextField(
                                     controller: fechaController,

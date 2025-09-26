@@ -170,6 +170,7 @@ class _CalendarCardState extends State<CalendarCard> {
                                 defaultColumnWidth:
                                     const IntrinsicColumnWidth(),
                                 children: [
+                                  // Fila de encabezados
                                   TableRow(
                                     children: [
                                       const SizedBox(),
@@ -187,6 +188,7 @@ class _CalendarCardState extends State<CalendarCard> {
                                         ),
                                     ],
                                   ),
+                                  // Filas de horas
                                   for (var hour in _hours)
                                     TableRow(
                                       children: [
@@ -209,20 +211,9 @@ class _CalendarCardState extends State<CalendarCard> {
                                                 hour,
                                               );
 
-                                              // Obtener citas para esta fecha/hora
-                                              final citasDelDia = modelo
-                                                  .getCitasPorDia(day);
-
-                                              Cliente? cita;
-                                              try {
-                                                cita = citasDelDia.firstWhere(
-                                                  (c) =>
-                                                      c.hora ==
-                                                      "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}",
-                                                );
-                                              } catch (e) {
-                                                cita = null;
-                                              }
+                                              // Buscar cita exacta para esa fecha/hora
+                                              final cita = modelo
+                                                  .getCitaPorFechaHora(dt);
 
                                               if (cita != null) {
                                                 return GestureDetector(

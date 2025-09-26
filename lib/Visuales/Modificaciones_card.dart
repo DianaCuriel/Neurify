@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
+import '../Modelos/Modificaciones_model.dart';
 
-class DatosxdiaCard extends StatelessWidget {
-  const DatosxdiaCard({Key? key}) : super(key: key);
+class ModificacionesCard extends StatelessWidget {
+  const ModificacionesCard({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final modelo = context.watch<CalendarioModel>();
+    final modelo = context.watch<ModificacionesModel>();
     final ahora = DateTime.now();
 
     // Filtrar citas de hoy que aún no han pasado
@@ -51,15 +51,14 @@ class DatosxdiaCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Nombre: ${cita.nombre}",
+                      "Nombre: ${cita.titulo}",
                       style: AppTheme.sutittleStyle,
                     ),
-                    Text("Asunto: ${cita.asunto}", style: AppTheme.bodyStyle),
+
                     Text(
                       "Hora: ${DateFormat("HH:mm").format(cita.fechaHora)}",
                       style: AppTheme.bodyStyle,
                     ),
-                    Text("Número: ${cita.numero}", style: AppTheme.bodyStyle),
                   ],
                 ),
               ),

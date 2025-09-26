@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../Modelos/Calendario_model.dart';
 import '../Fijo/app_theme.dart';
 
@@ -9,8 +10,7 @@ class TestDBPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modelo = context.watch<CalendarioModel>();
-
-    final citas = modelo.citas; // Aquí obtienes todas las citas
+    final citas = modelo.citas; // Accede a todas las citas
 
     return Scaffold(
       appBar: AppBar(
@@ -29,6 +29,10 @@ class TestDBPage extends StatelessWidget {
                 itemCount: citas.length,
                 itemBuilder: (context, index) {
                   final cita = citas[index];
+                  final fechaFormateada = DateFormat(
+                    "dd/MM/yyyy HH:mm",
+                  ).format(cita.fechaHora);
+
                   return Card(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -52,10 +56,9 @@ class TestDBPage extends StatelessWidget {
                             style: AppTheme.bodyStyle,
                           ),
                           Text(
-                            "Fecha: ${cita.fecha}",
+                            "Fecha/Hora: $fechaFormateada",
                             style: AppTheme.bodyStyle,
                           ),
-                          Text("Hora: ${cita.hora}", style: AppTheme.bodyStyle),
                           Text(
                             "Número: ${cita.numero}",
                             style: AppTheme.bodyStyle,
@@ -73,9 +76,8 @@ class TestDBPage extends StatelessWidget {
             Cliente(
               nombre: "Prueba",
               asunto: "Test DB",
-              fecha: "25/09/2025",
-              hora: "15:30",
               numero: "1234567890",
+              fechaHora: DateTime.now().add(const Duration(hours: 2)),
             ),
           );
         },
