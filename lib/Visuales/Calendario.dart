@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/Appbar.dart';
@@ -6,6 +7,7 @@ import 'Calendario_card.dart';
 import '../Fijo/app_theme.dart';
 import '../Modelos/Calendario_model.dart';
 import 'DatosXdia_card.dart';
+import 'Calendario_agregarcita_card.dart';
 
 class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});
@@ -16,6 +18,12 @@ class CalendarioPage extends StatefulWidget {
 
 class _CalendarioPageState extends State<CalendarioPage> {
   bool _isMonthlyView = false;
+  double _calendarFrac = 0.55; // tamaño inicial del calendario (semanal)
+  double _datosFrac = 0.45; // tamaño inicial de Datosxdia
+  bool _isExpandedDatos = false; // para scroll interno de Datosxdia
+
+  bool _showSortBy = true; // controla si se muestra Sort by
+  bool _showLast24 = true; // controla si se muestra Last 24h
 
   @override
   Widget build(BuildContext context) {
@@ -23,29 +31,157 @@ class _CalendarioPageState extends State<CalendarioPage> {
       create: (_) => CalendarioModel(),
       child: Scaffold(
         appBar: const MiAppBar(title: "Calendario"),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(
-                height:
-                    _isMonthlyView
-                        ? MediaQuery.of(context).size.height * 0.7
-                        : MediaQuery.of(context).size.height * 0.5,
-                child: CalendarCard(
-                  initialDate: DateTime.now(),
-                  isMonthlyView: _isMonthlyView,
-                  onToggleView: () {
-                    setState(() {
-                      _isMonthlyView = !_isMonthlyView;
-                    });
-                  },
-                  // ya no se pasa `citas`, lo lee del modelo
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            const controlBarHeight = 56.0;
+            final total = constraints.maxHeight;
+
+            // espacio útil para calendar + datos (sin contar la barra de control)
+            final available = (total - controlBarHeight).clamp(
+              0.0,
+              double.infinity,
+            );
+
+            // altura basada en fracciones (modo "control por _calendarFrac")
+            final fracHeight = (_calendarFrac.clamp(0.0, 1.0)) * available;
+
+            // altura base para mensual (puedes ajustar 0.85 si quieres más/menos)
+            final monthlyBase = available * 0.85;
+
+            // altura final del calendario:
+            // - si estamos en mensual, permitimos que crezca hasta lo que pida _calendarFrac también
+            // - si estamos en semanal, usamos fracHeight
+            final calendarHeight =
+                _isMonthlyView ? max(monthlyBase, fracHeight) : fracHeight;
+
+            // altura del panel datos (sigue usando la fracción que controlas)
+            final bottomTarget = (_datosFrac.clamp(0.0, 1.0)) * available;
+
+            return SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 📅 CALENDARIO (ahora una sola AnimatedContainer con altura dinámica)
+                    if (_calendarFrac > 0 || _isMonthlyView)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOut,
+                        height: calendarHeight,
+                        child: CalendarCard(
+                          initialDate: DateTime.now(),
+                          isMonthlyView: _isMonthlyView,
+                          onToggleView: () {
+                            setState(() {
+                              _isMonthlyView = !_isMonthlyView;
+                            });
+                          },
+                        ),
+                      ),
+
+                    // 🔸 BARRA DE CONTROL
+                    Container(
+                      height: controlBarHeight,
+                      color: Colors.grey[200],
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          // 🟡 Sort by
+                          if (_showSortBy)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (_calendarFrac == 0.95 &&
+                                      _datosFrac == 0.0) {
+                                    // volver al estado inicial
+                                    _calendarFrac = 0.55;
+                                    _datosFrac = 0.45;
+                                    _isExpandedDatos = false;
+                                    _showSortBy = true;
+                                    _showLast24 = true;
+                                  } else {
+                                    // expandir calendario y ocultar datosxdia
+                                    _calendarFrac = 0.95;
+                                    _datosFrac = 0.0;
+                                    _isExpandedDatos = false;
+                                    _showSortBy = true;
+                                    _showLast24 = false; // ocultar Last 24h
+                                  }
+                                });
+                              },
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.swap_vert),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    "Sort by",
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          const Spacer(),
+
+                          // 🟢 Last 24h
+                          if (_showLast24)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  final bool isExpanded24 =
+                                      _isExpandedDatos && _datosFrac >= 0.8;
+
+                                  if (isExpanded24) {
+                                    // 🔄 Volver al estado inicial (depende si es mensual o semanal)
+                                    _calendarFrac =
+                                        _isMonthlyView ? 0.85 : 0.55;
+                                    _datosFrac = _isMonthlyView ? 0.15 : 0.45;
+                                    _isExpandedDatos = false;
+                                    _showSortBy = true;
+                                    _showLast24 = true;
+                                  } else {
+                                    // ⬆ Expandir Datosxdia y ocultar completamente calendario
+                                    _isMonthlyView =
+                                        false; // 🔹 forzar vista semanal para poder ocultar
+                                    _calendarFrac = 0.0;
+                                    _datosFrac =
+                                        1.0; // ocupar todo el espacio disponible
+                                    _isExpandedDatos = true;
+                                    _showSortBy = false;
+                                    _showLast24 = true;
+                                  }
+                                });
+                              },
+                              child: Row(
+                                children: const [
+                                  Text(
+                                    "Last 24h",
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Icon(Icons.arrow_drop_up),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // 📊 DATOS X DÍA
+                    if (_datosFrac > 0)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOut,
+                        height: bottomTarget,
+                        child: DatosxdiaCard(isExpanded: _isExpandedDatos),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              const DatosxdiaCard(),
-            ],
-          ),
+            );
+          },
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
@@ -54,185 +190,8 @@ class _CalendarioPageState extends State<CalendarioPage> {
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
               builder: (context) {
-                final nombreController = TextEditingController();
-                final asuntoController = TextEditingController();
-                final numeroController = TextEditingController();
-                final fechaController = TextEditingController();
-                final horaController = TextEditingController();
-
-                DateTime? selectedFecha;
-                TimeOfDay? selectedHora;
-
-                return DraggableScrollableSheet(
-                  initialChildSize: 0.4,
-                  minChildSize: 0.2,
-                  maxChildSize: 0.9,
-                  expand: false,
-                  builder: (context, scrollController) {
-                    return StatefulBuilder(
-                      builder: (context, setState) {
-                        return Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(16),
-                            ),
-                          ),
-                          child: SingleChildScrollView(
-                            controller: scrollController,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.close),
-                                        onPressed: () => Navigator.pop(context),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          if (selectedFecha != null &&
-                                              selectedHora != null) {
-                                            final fechaHoraFinal = DateTime(
-                                              selectedFecha!.year,
-                                              selectedFecha!.month,
-                                              selectedFecha!.day,
-                                              selectedHora!.hour,
-                                              selectedHora!.minute,
-                                            );
-
-                                            final nuevaCita = Cliente(
-                                              nombre: nombreController.text,
-                                              asunto: asuntoController.text,
-                                              numero: numeroController.text,
-                                              fechaHora: fechaHoraFinal,
-                                            );
-
-                                            context
-                                                .read<CalendarioModel>()
-                                                .addCita(nuevaCita);
-
-                                            Navigator.pop(context);
-                                          }
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              AppTheme.primaryColor,
-                                        ),
-                                        child: AppTheme.tituloBoton("Guardar"),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                  AppTheme.subtitleText('Datos personales'),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: nombreController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Nombre del cliente",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: asuntoController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Asunto",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: numeroController,
-                                    decoration: const InputDecoration(
-                                      hintText: "Número",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  AppTheme.subtitleText('Datos del día'),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: fechaController,
-                                    readOnly: true,
-                                    decoration: const InputDecoration(
-                                      hintText: "Día",
-                                      suffixIcon: Icon(Icons.calendar_today),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                    onTap: () async {
-                                      final fecha = await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.now(),
-                                        firstDate: DateTime(2000),
-                                        lastDate: DateTime(2100),
-                                      );
-                                      if (fecha != null) {
-                                        setState(() {
-                                          selectedFecha = fecha;
-                                          fechaController.text =
-                                              "${fecha.day}/${fecha.month}/${fecha.year}";
-                                        });
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: horaController,
-                                    readOnly: true,
-                                    decoration: const InputDecoration(
-                                      hintText: "Hora",
-                                      suffixIcon: Icon(Icons.access_time),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(8),
-                                        ),
-                                      ),
-                                    ),
-                                    onTap: () async {
-                                      final hora = await showTimePicker(
-                                        context: context,
-                                        initialTime: TimeOfDay.now(),
-                                      );
-                                      if (hora != null) {
-                                        setState(() {
-                                          selectedHora = hora;
-                                          horaController.text = hora.format(
-                                            context,
-                                          );
-                                        });
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
+                // Usamos solo el widget AgregarCitaPage
+                return const AgregarCitaPage();
               },
             );
           },
