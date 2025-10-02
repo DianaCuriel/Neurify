@@ -28,134 +28,205 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (selectedFecha != null && selectedHora != null) {
-                      final fechaHoraFinal = DateTime(
-                        selectedFecha!.year,
-                        selectedFecha!.month,
-                        selectedFecha!.day,
-                        selectedHora!.hour,
-                        selectedHora!.minute,
-                      );
-
-                      final nuevaCita = Cliente(
-                        nombre: nombreController.text,
-                        asunto: asuntoController.text,
-                        numero: numeroController.text,
-                        fechaHora: fechaHoraFinal,
-                      );
-
-                      context.read<CalendarioModel>().addCita(nuevaCita);
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+            // Encabezado con X y Guardar
+            SizedBox(
+              height: 80,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
-                  child: AppTheme.tituloBoton("Guardar"),
-                ),
-              ],
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 4,
+                      ),
+                      onPressed: _guardarCita,
+                      child: AppTheme.tituloBoton("Guardar"),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 48,
+                    child: Text(
+                      "Nueva cita",
+                      style: AppTheme.sutittleStyle.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
+
+            // Sección Datos personales
             AppTheme.subtitleText('Datos personales'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nombreController,
-              decoration: const InputDecoration(
-                hintText: "Nombre del cliente",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: asuntoController,
-              decoration: const InputDecoration(
-                hintText: "Asunto",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: numeroController,
-              decoration: const InputDecoration(
-                hintText: "Número",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-            ),
+            const SizedBox(height: 12),
+            _campoTexto(nombreController, "Nombre del cliente"),
+            _campoTexto(asuntoController, "Asunto"),
+            _campoTexto(numeroController, "Número"),
+
             const SizedBox(height: 20),
+            // Sección Datos del día
             AppTheme.subtitleText('Datos del día'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: fechaController,
-              readOnly: true,
-              decoration: const InputDecoration(
-                hintText: "Día",
-                suffixIcon: Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-              onTap: () async {
-                final fecha = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (fecha != null) {
-                  setState(() {
-                    selectedFecha = fecha;
-                    fechaController.text =
-                        "${fecha.day}/${fecha.month}/${fecha.year}";
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: horaController,
-              readOnly: true,
-              decoration: const InputDecoration(
-                hintText: "Hora",
-                suffixIcon: Icon(Icons.access_time),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-              onTap: () async {
-                final hora = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (hora != null) {
-                  setState(() {
-                    selectedHora = hora;
-                    horaController.text = hora.format(context);
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _campoFecha(),
+            _campoHora(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _campoTexto(TextEditingController controller, String hint) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _campoFecha() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: fechaController,
+        readOnly: true,
+        decoration: InputDecoration(
+          hintText: "Día",
+          suffixIcon: const Icon(Icons.calendar_today),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onTap: () async {
+          final fecha = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now(),
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+          );
+          if (fecha != null) {
+            setState(() {
+              selectedFecha = fecha;
+              fechaController.text =
+                  "${fecha.day}/${fecha.month}/${fecha.year}";
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _campoHora() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: horaController,
+        readOnly: true,
+        decoration: InputDecoration(
+          hintText: "Hora",
+          suffixIcon: const Icon(Icons.access_time),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onTap: () async {
+          final hora = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.now(),
+          );
+          if (hora != null) {
+            setState(() {
+              selectedHora = hora;
+              horaController.text = hora.format(context);
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  void _guardarCita() {
+    if (selectedFecha == null || selectedHora == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Selecciona fecha y hora')));
+      return;
+    }
+
+    final fechaHoraFinal = DateTime(
+      selectedFecha!.year,
+      selectedFecha!.month,
+      selectedFecha!.day,
+      selectedHora!.hour,
+      selectedHora!.minute,
+    );
+
+    final nuevaCita = Cliente(
+      nombre: nombreController.text,
+      asunto: asuntoController.text,
+      numero: numeroController.text,
+      fechaHora: fechaHoraFinal,
+    );
+
+    context.read<CalendarioModel>().addCita(nuevaCita);
+    Navigator.pop(context);
   }
 }

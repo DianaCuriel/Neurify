@@ -217,55 +217,76 @@ class _CalendarCardState extends State<CalendarCard> {
                                               for (var day in weekDays)
                                                 Builder(
                                                   builder: (context) {
-                                                    final dt = DateTime(
-                                                      day.year,
-                                                      day.month,
-                                                      day.day,
-                                                      hour,
-                                                    );
+                                                    // Buscar todas las citas en ese día y hora (independientemente de los minutos)
+                                                    final citasEnHora =
+                                                        context.read<CalendarioModel>().citas.where((
+                                                          cita,
+                                                        ) {
+                                                          return cita
+                                                                      .fechaHora
+                                                                      .year ==
+                                                                  day.year &&
+                                                              cita
+                                                                      .fechaHora
+                                                                      .month ==
+                                                                  day.month &&
+                                                              cita
+                                                                      .fechaHora
+                                                                      .day ==
+                                                                  day.day &&
+                                                              cita
+                                                                      .fechaHora
+                                                                      .hour ==
+                                                                  hour;
+                                                        }).toList();
 
-                                                    final cita = context
-                                                        .read<CalendarioModel>()
-                                                        .getCitaPorFechaHora(
-                                                          dt,
-                                                        );
-
-                                                    if (cita != null) {
-                                                      return GestureDetector(
-                                                        onTap:
-                                                            () => widget
-                                                                .onDateSelected
-                                                                ?.call(dt),
-                                                        child: Container(
-                                                          height: 50,
-                                                          width: 70,
-                                                          margin:
-                                                              const EdgeInsets.all(
-                                                                4,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: widget
-                                                                .primaryColor
-                                                                .withOpacity(
-                                                                  0.8,
+                                                    if (citasEnHora
+                                                        .isNotEmpty) {
+                                                      return Column(
+                                                        children:
+                                                            citasEnHora.map((
+                                                              cita,
+                                                            ) {
+                                                              return GestureDetector(
+                                                                onTap:
+                                                                    () => widget
+                                                                        .onDateSelected
+                                                                        ?.call(
+                                                                          cita.fechaHora,
+                                                                        ),
+                                                                child: Container(
+                                                                  height:
+                                                                      24, // ajustar altura según cuántas citas quieras mostrar
+                                                                  margin:
+                                                                      const EdgeInsets.symmetric(
+                                                                        vertical:
+                                                                            2,
+                                                                      ),
+                                                                  decoration: BoxDecoration(
+                                                                    color: widget
+                                                                        .primaryColor
+                                                                        .withOpacity(
+                                                                          0.8,
+                                                                        ),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          8,
+                                                                        ),
+                                                                  ),
+                                                                  child: Center(
+                                                                    child: Text(
+                                                                      cita.nombre,
+                                                                      style: const TextStyle(
+                                                                        color:
+                                                                            Colors.white,
+                                                                        fontSize:
+                                                                            10,
+                                                                      ),
+                                                                    ),
+                                                                  ),
                                                                 ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  8,
-                                                                ),
-                                                          ),
-                                                          child: Center(
-                                                            child: Text(
-                                                              cita.nombre,
-                                                              style: const TextStyle(
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                                fontSize: 12,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
+                                                              );
+                                                            }).toList(),
                                                       );
                                                     } else {
                                                       return const SizedBox(

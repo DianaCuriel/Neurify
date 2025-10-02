@@ -1,73 +1,141 @@
-//3.a.1.
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-//3.a.1.2. Modelo de datos de una cita
-class Modificiones {
+/// Tipos de bloqueo en el calendario
+enum TipoModificacion {
+  unica, // Solo un día específico
+  rangoDiario, // Se repite diario dentro de un rango de fechas
+  semanal, // Repetición semanal (ej: todos los lunes)
+}
+
+/// Clase que representa un bloqueo/modificación en el calendario
+class Modificacion {
   final String titulo;
-  final DateTime fechaHora; // Guarda fecha + hora en un solo campo
 
-  Modificiones({required this.titulo, required this.fechaHora});
+  /// Fecha de inicio y fin (para rangos o un único día)
+  final DateTime fechaInicio;
+  final DateTime fechaFin;
+
+  /// Hora de inicio y fin del bloqueo
+  final TimeOfDay horaInicio;
+  final TimeOfDay horaFin;
+
+  /// Tipo de modificación
+  final TipoModificacion tipo;
+
+  /// Si es semanal, indica qué días de la semana aplica (0 = Lunes, 6 = Domingo)
+  final List<int>? diasSemana;
+
+  Modificacion({
+    required this.titulo,
+    required this.fechaInicio,
+    required this.fechaFin,
+    required this.horaInicio,
+    required this.horaFin,
+    required this.tipo,
+    this.diasSemana,
+  });
 }
 
 class ModificacionesModel extends ChangeNotifier {
-  final List<Modificiones> _citas = [];
+  final List<Modificacion> _modificaciones = [];
 
-  List<Modificiones> get citas => List.unmodifiable(_citas);
+  ModificacionesModel() {
+    // 🔹 Ejemplos iniciales para probar
+    _modificaciones.addAll([
+      // 🟡 ÚNICA: 29 sep 2025 de 1 a 3 PM
+      Modificacion(
+        titulo: "Pagar servicio",
+        fechaInicio: DateTime(2025, 9, 29),
+        fechaFin: DateTime(2025, 9, 29),
+        horaInicio: const TimeOfDay(hour: 13, minute: 0),
+        horaFin: const TimeOfDay(hour: 15, minute: 0),
+        tipo: TipoModificacion.unica,
+      ),
+      // 🔵 SEMANAL: Todos los lunes de 17:00 a 18:00
+      Modificacion(
+        titulo: "Recoger a la niña",
+        fechaInicio: DateTime(2025, 1, 1),
+        fechaFin: DateTime(2025, 12, 31),
+        horaInicio: const TimeOfDay(hour: 17, minute: 0),
+        horaFin: const TimeOfDay(hour: 18, minute: 0),
+        tipo: TipoModificacion.semanal,
+        diasSemana: [0], // Lunes
+      ),
+      // 🟤 RANGO DIARIO: del 5 al 20 de enero de 14:00 a 15:00
+      Modificacion(
+        titulo: "Comida",
+        fechaInicio: DateTime(2025, 1, 5),
+        fechaFin: DateTime(2025, 1, 20),
+        horaInicio: const TimeOfDay(hour: 14, minute: 0),
+        horaFin: const TimeOfDay(hour: 15, minute: 0),
+        tipo: TipoModificacion.rangoDiario,
+      ),
+    ]);
+  }
 
-  void addCita(Modificiones cita) {
-    _citas.add(cita);
+  List<Modificacion> get modificaciones => List.unmodifiable(_modificaciones);
+
+  void addModificacion(Modificacion mod) {
+    _modificaciones.add(mod);
     notifyListeners();
   }
 
-  void removeCita(Modificiones cita) {
-    _citas.remove(cita);
+  void removeModificacion(Modificacion mod) {
+    _modificaciones.remove(mod);
     notifyListeners();
   }
 
-  /// Filtrar citas por día (independientemente de la hora)
-  List<Modificiones> getCitasPorDia(DateTime dia) {
-    return _citas
-        .where(
-          (cita) =>
-              cita.fechaHora.year == dia.year &&
-              cita.fechaHora.month == dia.month &&
-              cita.fechaHora.day == dia.day,
-        )
-        .toList();
+  /// Devuelve todos los bloqueos que afectan un día específico
+  List<Modificacion> getBloqueosPorDia(DateTime dia) {
+    return _modificaciones.where((mod) {
+      switch (mod.tipo) {
+        case TipoModificacion.unica:
+          return _esMismoDia(mod.fechaInicio, dia);
+
+        case TipoModificacion.rangoDiario:
+          return dia.isAfter(
+                mod.fechaInicio.subtract(const Duration(days: 1)),
+              ) &&
+              dia.isBefore(mod.fechaFin.add(const Duration(days: 1)));
+
+        case TipoModificacion.semanal:
+          final weekdayIndex = (dia.weekday - 1); // 0=Lunes
+          return mod.diasSemana?.contains(weekdayIndex) ?? false;
+      }
+    }).toList();
   }
 
-  /// Filtrar citas por semana (lunes a domingo)
-  List<Modificiones> getCitasPorSemana(DateTime monday) {
-    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
-    return _citas
-        .where(
-          (cita) =>
-              !cita.fechaHora.isBefore(startOfWeek) &&
-              !cita.fechaHora.isAfter(endOfWeek),
-        )
-        .toList();
-  }
-
-  /// Filtrar citas exactas por fecha y hora
-  Modificiones? getCitaPorFechaHora(DateTime dt) {
-    try {
-      return _citas.firstWhere(
-        (cita) =>
-            cita.fechaHora.year == dt.year &&
-            cita.fechaHora.month == dt.month &&
-            cita.fechaHora.day == dt.day &&
-            cita.fechaHora.hour == dt.hour &&
-            cita.fechaHora.minute == dt.minute,
-      );
-    } catch (_) {
-      return null;
+  /// Verifica si un intervalo de tiempo (ej. cita) cae dentro de algún bloqueo
+  bool estaBloqueado(DateTime fecha, TimeOfDay horaInicio, TimeOfDay horaFin) {
+    final bloqueosDelDia = getBloqueosPorDia(fecha);
+    for (final b in bloqueosDelDia) {
+      if (_intersectanHoras(horaInicio, horaFin, b.horaInicio, b.horaFin)) {
+        return true;
+      }
     }
+    return false;
   }
 
-  void clearCitas() {
-    _citas.clear();
+  // Helpers
+  bool _esMismoDia(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  bool _intersectanHoras(
+    TimeOfDay start1,
+    TimeOfDay end1,
+    TimeOfDay start2,
+    TimeOfDay end2,
+  ) {
+    final start1Min = start1.hour * 60 + start1.minute;
+    final end1Min = end1.hour * 60 + end1.minute;
+    final start2Min = start2.hour * 60 + start2.minute;
+    final end2Min = end2.hour * 60 + end2.minute;
+
+    return start1Min < end2Min && end1Min > start2Min;
+  }
+
+  void clear() {
+    _modificaciones.clear();
     notifyListeners();
   }
 }

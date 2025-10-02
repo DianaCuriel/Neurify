@@ -1,8 +1,7 @@
-//3.a.1.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-//3.a.1.2. Modelo de datos de una cita
+// Modelo de datos de una cita
 class Cliente {
   final String nombre;
   final String asunto;
@@ -18,7 +17,32 @@ class Cliente {
 }
 
 class CalendarioModel extends ChangeNotifier {
-  final List<Cliente> _citas = [];
+  final List<Cliente> _citas = [
+    Cliente(
+      nombre: "Juan Pérez",
+      asunto: "Reparación celular iPhone14",
+      numero: "555-1234",
+      fechaHora: DateTime(2025, 9, 29, 15, 0), // 29 sept 2025, 3:00 PM
+    ),
+    Cliente(
+      nombre: "Ana López",
+      asunto: "Compra celular. Quiere ver Samsung",
+      numero: "555-5678",
+      fechaHora: DateTime(2025, 10, 2, 11, 30), // 1 oct 2025, 11:30 AM
+    ),
+    Cliente(
+      nombre: "Carlos Ramírez",
+      asunto: "Entrevista de trabajo",
+      numero: "555-9876",
+      fechaHora: DateTime(2025, 10, 3, 14, 0), // 3 oct 2025, 2:00 PM
+    ),
+    Cliente(
+      nombre: "María Gómez",
+      asunto: "Llamada importante",
+      numero: "555-4321",
+      fechaHora: DateTime(2025, 10, 5, 9, 0), // 5 oct 2025, 9:00 AM
+    ),
+  ];
 
   List<Cliente> get citas => List.unmodifiable(_citas);
 

@@ -118,7 +118,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                   Text(
                     cita.asunto,
                     style: AppTheme.sutittleStyle.copyWith(
-                      fontWeight: FontWeight.bold,
+                      // fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(cita.nombre, style: AppTheme.sutittleStyle),
@@ -150,8 +150,20 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
+                    foregroundColor: Colors.white, // <-- color del texto
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
-                  child: const Text("Cancelar"),
+                  child: const Text(
+                    "Cancelar",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      // color: no necesario si se usa foregroundColor arriba
+                    ),
+                  ),
                 ),
               ],
             ),
