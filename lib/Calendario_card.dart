@@ -9,11 +9,11 @@ class CalendarCard extends StatefulWidget {
   final Color primaryColor;
 
   const CalendarCard({
-    Key? key,
+    super.key,
     this.initialDate,
     this.onDateSelected,
     this.primaryColor = AppTheme.primaryColor,
-  }) : super(key: key);
+  });
 
   @override
   _CalendarCardState createState() => _CalendarCardState();
