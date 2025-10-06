@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:neurify/Visuales/Modificaciones.dart';
 import 'package:neurify/Visuales/calendario.dart';
+import 'package:neurify/Visuales/estadisticas_page.dart';
 
 class MiBottomNav extends StatelessWidget {
   const MiBottomNav({super.key});
@@ -48,13 +49,13 @@ class MiBottomNav extends StatelessWidget {
   }
 }
 
-// Página de ejemplo para Estadísticas
-class EstadisticasPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Estadísticas")),
-      body: const Center(child: Text("Aquí van las estadísticas")),
-    );
-  }
-}
+// // Página de ejemplo para Estadísticas
+// class EstadisticasPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text("Estadísticas")),
+//       body: const Center(child: Text("Aquí van las estadísticas")),
+//     );
+//   }
+// }
