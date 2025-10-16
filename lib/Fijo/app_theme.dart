@@ -1,15 +1,15 @@
+//2.a.1
 import 'package:flutter/material.dart';
 
+//2.a.2
 class AppTheme {
-  // 🎨 Paleta de colores
-  static const Color primaryColor = Color(
-    0xFF2C3E50,
-  ); // Azul oscuro (como en tu header)
+  // 2.a.2.1
+  static const Color primaryColor = Color(0xFF2C3E50);
   static const Color backgroundColor = Color(0xFFF2F2F2); // Gris claro
   static const Color accentColor = Colors.black87;
   static const Color caja = Colors.white;
 
-  // 📖 Tipografía
+  // 2.a.2.2
   static const TextStyle titleStyle = TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.bold,
@@ -31,6 +31,7 @@ class AppTheme {
     color: Colors.white,
   );
 
+  //2.a.2.3
   static Widget subtitleText(String text) {
     return Text(text, style: sutittleStyle, textAlign: TextAlign.center);
   }
@@ -39,6 +40,7 @@ class AppTheme {
     return Text(text, style: TituloBoton);
   }
 
+  //2.a.2.4
   static ThemeData themeData = ThemeData(
     primaryColor: primaryColor,
     scaffoldBackgroundColor: backgroundColor,

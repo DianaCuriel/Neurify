@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'Fijo/app_theme.dart'; // Usamos el tema principal que ya tienes
+import '../Fijo/app_theme.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
   const ForgotPasswordScreen({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Usamos almacenamiento seguro
 import '../Fijo/app_theme.dart';
-import '../calendario.dart'; // Corregido para seguir la convención de nombres de archivo
-import '../forgot_password_screen.dart';
+import 'Calendario.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,36 +12,77 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // --- ESTADO Y CONTROLADORES ---
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _storage =
+      const FlutterSecureStorage(); // Instancia del almacenamiento seguro
 
   bool _isPasswordVisible = false;
+  bool _rememberMe = false; // Estado para el checkbox
 
+  // --- DATOS DE DEMO (para pruebas) ---
   static const String _demoUser = 'isaac';
   static const String _demoPass = '1234';
 
-  void _login() async {
-    // Se valida el formulario antes de la operación asíncrona
+  @override
+  void initState() {
+    super.initState();
+    _loadUserCredentials(); // Intentar cargar datos guardados al iniciar la pantalla
+  }
+
+  // --- LÓGICA DE LA FUNCIONALIDAD ---
+
+  // Carga las credenciales guardadas de forma segura
+  Future<void> _loadUserCredentials() async {
+    try {
+      final username = await _storage.read(key: 'username');
+      final password = await _storage.read(key: 'password');
+
+      // Si se encontraron datos, se cargan en los campos
+      if (username != null && password != null) {
+        setState(() {
+          _usernameController.text = username;
+          _passwordController.text = password;
+          _rememberMe = true;
+        });
+      }
+    } catch (e) {
+      // Manejo de errores en caso de que la lectura falle
+      debugPrint("Error al leer credenciales guardadas: $e");
+    }
+  }
+
+  // Procesa el inicio de sesión del usuario
+  Future<void> login() async {
+    // Primero, valida que los campos no estén vacíos
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
+    // Lógica para guardar o borrar las credenciales según el checkbox
+    if (_rememberMe) {
+      // Si "Recordarme" está activo, guarda el usuario y contraseña
+      await _storage.write(key: 'username', value: _usernameController.text);
+      await _storage.write(key: 'password', value: _passwordController.text);
+    } else {
+      // Si no está activo, borra cualquier credencial que estuviera guardada
+      await _storage.delete(key: 'username');
+      await _storage.delete(key: 'password');
+    }
+
+    // Lógica de autenticación (aquí usas tus datos de prueba)
     if (_usernameController.text == _demoUser &&
         _passwordController.text == _demoPass) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-
-      // --- CORRECCIÓN 1: 'use_build_context_synchronously' ---
-      // Se comprueba si el widget todavía está en pantalla antes de usar su BuildContext.
+      // Si el login es exitoso, navega a la siguiente pantalla
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const CalendarioPage()),
         );
       }
     } else {
-      // --- CORRECCIÓN 1: 'use_build_context_synchronously' ---
-      // También se aplica aquí, ya que está en el mismo scope asíncrono.
+      // Si el login falla, muestra un mensaje de error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -53,12 +94,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Navega a la pantalla de "Olvidé mi contraseña"
   void _goToForgotPassword() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
     );
   }
 
+  // --- CONSTRUCCIÓN DE LA INTERFAZ DE USUARIO ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,28 +115,28 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SafeArea(
               child: Column(
                 children: [
+                  // Sección superior con el logo
                   Expanded(
                     flex: 2,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Image.asset(
-                          'assets/images/logo.png', // Ruta de tu logo
-                          height: 150, // Puedes ajustar este valor
+                          'lib/assets/images/Logo.png', // Ruta corregida sin 'lib/'
+                          height: 170,
                         ),
                         const SizedBox(height: 20),
                         Text(
                           'Iniciar sesión',
                           style: AppTheme.titleStyle.copyWith(
                             fontSize: 18,
-                            // --- CORRECCIÓN 2: 'deprecated_member_use' ---
-                            // Se reemplaza withOpacity por withAlpha
                             color: Colors.white.withAlpha((255 * 0.7).round()),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  // Sección inferior con el formulario
                   Expanded(
                     flex: 3,
                     child: Container(
@@ -115,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              'NAME',
+                              'Nombre',
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontWeight: FontWeight.bold,
@@ -125,6 +168,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _usernameController,
                               textAlign: TextAlign.center,
+                              textInputAction: TextInputAction.next,
+                              onFieldSubmitted:
+                                  (_) => FocusScope.of(context).nextFocus(),
                               decoration: InputDecoration(
                                 filled: true,
                                 fillColor: Colors.grey[200],
@@ -141,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 20),
                             const Text(
-                              'PASSWORD',
+                              'Contraseña',
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontWeight: FontWeight.bold,
@@ -166,11 +212,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                         : Icons.visibility_off,
                                     color: AppTheme.primaryColor,
                                   ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isPasswordVisible = !_isPasswordVisible;
-                                    });
-                                  },
+                                  onPressed:
+                                      () => setState(
+                                        () =>
+                                            _isPasswordVisible =
+                                                !_isPasswordVisible,
+                                      ),
                                 ),
                               ),
                               validator:
@@ -179,9 +226,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ? 'Ingrese su contraseña'
                                           : null,
                             ),
-                            const SizedBox(height: 30),
+
+                            // Checkbox para "Recordarme"
+                            CheckboxListTile(
+                              title: const Text(
+                                "Recordarme",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              value: _rememberMe,
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _rememberMe = newValue ?? false;
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                              activeColor: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Botón de Entrar
                             ElevatedButton(
-                              onPressed: _login,
+                              onPressed: login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primaryColor,
                                 padding: const EdgeInsets.symmetric(
@@ -191,15 +257,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              // Asumiendo que corregirás esto en app_theme.dart
                               child: AppTheme.tituloBoton('Entrar'),
                             ),
                             const SizedBox(height: 20),
+                            // Botón de "Olvidé mi contraseña"
                             Center(
                               child: TextButton(
                                 onPressed: _goToForgotPassword,
                                 child: const Text(
-                                  'Forgot Password?',
+                                  '¿Olvidaste tu contraseña?',
                                   style: TextStyle(color: Colors.grey),
                                 ),
                               ),
