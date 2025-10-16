@@ -50,6 +50,7 @@ dev_dependencies:
   table_calendar: ^3.0.9
   provider: ^6.0.6
   shared_preferences: ^2.2.3 
+  fl_chart: ^0.68.0
 
 
 
@@ -58,10 +59,16 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/images/
   uses-material-design: true
 
-  assets:
-    - assets/images/logo.png
+
+# flutter:
+#   uses-material-design: true
+
+#   assets:
+#     - assets/images/logo.png
 
 
   # To add assets to your application, add an assets section, like this:
