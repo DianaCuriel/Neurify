@@ -120,7 +120,7 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
           child: const Icon(Icons.add, color: Colors.white),
         ),
 
-        bottomNavigationBar: const MiBottomNav(),
+        bottomNavigationBar: const MiBottomNav(currentIndex: 0),
       ),
     );
   }
