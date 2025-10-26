@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart'; // Para formatear fechas
 import 'dart:math'; // Para generar datos de ejemplo aleatorios
-
 import '../Fijo/app_theme.dart';
 import '../Fijo/AppBar.dart';
 
