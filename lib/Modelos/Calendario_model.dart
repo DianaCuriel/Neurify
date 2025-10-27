@@ -6,7 +6,7 @@ class Cliente {
   final String nombre;
   final String asunto;
   final String numero;
-  final DateTime fechaHora; // Guarda fecha + hora en un solo campo
+  final DateTime fechaHora;
 
   Cliente({
     required this.nombre,
@@ -22,7 +22,7 @@ class CalendarioModel extends ChangeNotifier {
       nombre: "Juan Pérez",
       asunto: "Reparación celular iPhone14",
       numero: "555-1234",
-      fechaHora: DateTime(2025, 9, 29, 15, 0), // 29 sept 2025, 3:00 PM
+      fechaHora: DateTime(2025, 10, 25, 15, 0), // 29 sept 2025, 3:00 PM
     ),
     Cliente(
       nombre: "Ana López",
@@ -102,96 +102,3 @@ class CalendarioModel extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-// import 'package:flutter/material.dart';
-// import 'dart:math';
-
-// /// Clase Cliente
-// class Cliente {
-//   final String nombre;
-//   final String asunto;
-//   final String numero;
-//   final DateTime fechaHora;
-
-//   Cliente({
-//     required this.nombre,
-//     required this.asunto,
-//     required this.numero,
-//     required this.fechaHora,
-//   });
-// }
-
-// /// Modelo con Provider
-// class CalendarioModel extends ChangeNotifier {
-//   final List<Cliente> _citas = [];
-
-//   List<Cliente> get citas => List.unmodifiable(_citas);
-
-//   /// Agregar nueva cita
-//   void addCita(Cliente cita) {
-//     _citas.add(cita);
-//     notifyListeners();
-//   }
-
-//   /// Eliminar cita
-//   void removeCita(Cliente cita) {
-//     _citas.remove(cita);
-//     notifyListeners();
-//   }
-
-//   /// Simular carga desde "base de datos"
-//   void cargarCitasDePrueba() {
-//     _citas.clear();
-//     _citas.addAll([
-//       Cliente(
-//         nombre: "Juan Pérez",
-//         asunto: "Consulta médica",
-//         numero: "555-1234",
-//         fechaHora: DateTime.now().add(const Duration(hours: 1)),
-//       ),
-//       Cliente(
-//         nombre: "Ana López",
-//         asunto: "Revisión dental",
-//         numero: "555-5678",
-//         fechaHora: DateTime.now().add(const Duration(days: 1, hours: 2)),
-//       ),
-//       Cliente(
-//         nombre: "Carlos Ramírez",
-//         asunto: "Entrevista de trabajo",
-//         numero: "555-9876",
-//         fechaHora: DateTime.now().add(const Duration(days: -1, hours: 3)),
-//       ),
-//     ]);
-//     notifyListeners();
-//   }
-
-//   /// Generar citas aleatorias (útil para pruebas largas)
-//   void generarCitasAleatorias(int cantidad) {
-//     final random = Random();
-//     final nombres = ["Juan", "Ana", "Carlos", "María", "Pedro", "Lucía"];
-//     final asuntos = ["Consulta", "Reunión", "Llamada", "Taller", "Entrega"];
-
-//     for (int i = 0; i < cantidad; i++) {
-//       final nombre = nombres[random.nextInt(nombres.length)];
-//       final asunto = asuntos[random.nextInt(asuntos.length)];
-//       final numero = "555-${1000 + random.nextInt(9000)}";
-
-//       final fecha = DateTime.now().add(
-//         Duration(
-//           days: random.nextInt(10) - 5, // desde 5 días atrás hasta 5 adelante
-//           hours: random.nextInt(12),
-//         ),
-//       );
-
-//       _citas.add(
-//         Cliente(
-//           nombre: nombre,
-//           asunto: asunto,
-//           numero: numero,
-//           fechaHora: fecha,
-//         ),
-//       );
-//     }
-//     notifyListeners();
-//   }
-// }
