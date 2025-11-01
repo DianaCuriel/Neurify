@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
-import '../Modelos/estadisticas_modelo.dart';
+import '../modelos/estadisticas_modelo.dart';
 import '../Fijo/app_theme.dart';
-import '../Fijo/AppBar.dart'; // Asegúrate que el nombre del archivo sea correcto (AppBar.dart o Appbar.dart?)
-import '../Fijo/BottomNavigator.dart'; // Asegúrate que esta es la ruta y nombre correctos
+import '../Fijo/AppBar.dart';
+import '../Fijo/BottomNavigator.dart';
 
 class EstadisticasPage extends StatefulWidget {
   const EstadisticasPage({super.key});
@@ -14,8 +14,9 @@ class EstadisticasPage extends StatefulWidget {
 }
 
 class _EstadisticasPageState extends State<EstadisticasPage> {
-  // Función para mostrar el selector de rango de fechas
+  /// Muestra el selector de rango de fechas nativo.
   Future<void> _mostrarSelectorFecha() async {
+    // context.read() se usa para llamar un método, no para escuchar cambios.
     final modelo = context.read<EstadisticasModelo>();
 
     final newDateRange = await showDateRangePicker(
@@ -24,17 +25,14 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
       lastDate: DateTime(2030),
       initialDateRange: modelo.rangoFechasSeleccionado,
       builder: (context, child) {
-        // Aplica el tema al selector de fechas
+        // Aplica el tema personalizado al DatePicker
         return Theme(
           data: ThemeData.light().copyWith(
-            dialogTheme: const DialogThemeData(
-              // Corrección para propiedad obsoleta
-              backgroundColor: Colors.white,
-            ),
+            dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryColor, // Color del header
-              onPrimary: Colors.white, // Texto del header
-              onSurface: Colors.black87, // Texto de las fechas
+              primary: AppTheme.primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
             ),
           ),
           child: child!,
@@ -42,126 +40,144 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
       },
     );
 
-    // Si el usuario selecciona un rango, actualiza el modelo
+    // Si el usuario selecciona un rango, actualiza el modelo.
     if (newDateRange != null) {
       modelo.setRangoPersonalizado(newDateRange);
     }
   }
 
-  // Función llamada por el FloatingActionButton para refrescar los datos
+  /// Función llamada por el FloatingActionButton para refrescar los datos.
   void _recargarEstadisticas() {
-    final modelo = context.read<EstadisticasModelo>();
-    // Llama al método en el modelo (¡ASEGÚRATE QUE EXISTA!)
-    modelo.cargarDatosActuales();
-
-    // Muestra un mensaje de confirmación
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Estadísticas actualizadas.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    context.read<EstadisticasModelo>().cargarDatosActuales();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escucha los cambios en el modelo para redibujar la UI
+    // context.watch() escucha los cambios en el modelo y redibuja la UI.
     final modelo = context.watch<EstadisticasModelo>();
 
     return Scaffold(
       appBar: MiAppBar(title: 'Estadísticas'),
       backgroundColor: Colors.grey[100],
-      body: ListView(
-        // Permite scroll si el contenido es largo
-        padding: const EdgeInsets.all(16.0),
+
+      // Se usa un Stack para poder mostrar un indicador de carga
+      // superpuesto encima del contenido de la lista.
+      body: Stack(
         children: [
-          // Barra superior con filtros
-          _buildBarraFiltros(modelo),
-          const SizedBox(height: 16),
-          // Título que muestra el filtro o rango actual
-          Text(
-            modelo.tituloFecha,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
+          // El contenido principal de la página
+          ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              // Barra de filtros (Dropdown y Calendario)
+              AbsorbPointer(
+                // Bloquea la interacción con los filtros mientras está cargando
+                absorbing: modelo.isLoading,
+                child: _buildBarraFiltros(modelo),
+              ),
+              const SizedBox(height: 16),
+
+              // Título con el rango de fechas actual
+              Text(
+                modelo.tituloFecha,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Tarjeta de estadísticas de Cancelaciones
+              _buildTarjetaEstadistica(
+                titulo: 'Cancelaciones',
+                datoPrincipal: modelo.datoPrincipalCancelaciones,
+                datoSecundario: modelo.datoSecundarioCancelaciones,
+                datosGrafica: modelo.datosGraficaCancelaciones,
+                colorGrafica: Colors.red,
+                filtro: modelo.filtroSeleccionado,
+              ),
+              const SizedBox(height: 16),
+
+              // Tarjeta de estadísticas de Citas Realizadas
+              _buildTarjetaEstadistica(
+                titulo: 'Citas realizadas',
+                datoPrincipal: modelo.datoPrincipalCitas,
+                datoSecundario: modelo.datoSecundarioCitas,
+                datosGrafica: modelo.datosGraficaCitas,
+                colorGrafica: Colors.blue,
+                filtro: modelo.filtroSeleccionado,
+              ),
+            ],
+          ),
+
+          // --- Indicador de Carga (Loader) ---
+          // Se muestra solo si modelo.isLoading es true
+          if (modelo.isLoading)
+            Container(
+              // Fondo semitransparente para atenuar la UI
+              color: Colors.black.withAlpha((0.1 * 255).round()),
+              child: const Center(
+                child: CircularProgressIndicator(color: AppTheme.primaryColor),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          // Tarjeta para las estadísticas de Cancelaciones
-          _buildTarjetaEstadistica(
-            titulo: 'Cancelaciones',
-            datoPrincipal: modelo.datoPrincipalCancelaciones,
-            datoSecundario: modelo.datoSecundarioCancelaciones,
-            datosGrafica: modelo.datosGraficaCancelaciones,
-            colorGrafica: Colors.red,
-            filtro: modelo.filtroSeleccionado,
-          ),
-          const SizedBox(height: 16),
-          // Tarjeta para las estadísticas de Citas Realizadas
-          _buildTarjetaEstadistica(
-            titulo: 'Citas realizadas',
-            datoPrincipal: modelo.datoPrincipalCitas,
-            datoSecundario: modelo.datoSecundarioCitas,
-            datosGrafica: modelo.datosGraficaCitas,
-            colorGrafica: Colors.blue,
-            filtro: modelo.filtroSeleccionado,
-          ),
         ],
       ),
-      // Barra de navegación inferior
+
       bottomNavigationBar: const MiBottomNav(),
-      // Usa tu widget personalizado
-      // Botón flotante para recargar
+
       floatingActionButton: FloatingActionButton(
-        onPressed: _recargarEstadisticas, // Llama a la función de recarga
+        // Deshabilita el botón si está cargando (onPressed: null)
+        onPressed: modelo.isLoading ? null : _recargarEstadisticas,
         tooltip: 'Actualizar Estadísticas',
-        backgroundColor: AppTheme.primaryColor, // Color del botón
-        child: const Icon(
-          Icons.refresh,
-          color: Colors.white,
-        ), // Ícono de refrescar
+        backgroundColor: modelo.isLoading ? Colors.grey : AppTheme.primaryColor,
+        child:
+            modelo.isLoading
+                // Muestra un spinner DENTRO del botón si está cargando
+                ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+                // Muestra el ícono de refrescar si no está cargando
+                : const Icon(Icons.refresh, color: Colors.white),
       ),
     );
   }
 
   // --- Widgets Auxiliares ---
 
-  // Construye la barra de filtros (Dropdown + Ícono Calendario)
+  /// Construye la fila superior con el Dropdown y el ícono de calendario.
   Widget _buildBarraFiltros(EstadisticasModelo modelo) {
     return Row(
       children: [
         Expanded(
-          // Dropdown ocupa el espacio disponible
+          // Dropdown de filtros predefinidos
           child: Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 12.0,
               vertical: 4.0,
             ),
             decoration: BoxDecoration(
-              // Estilo del contenedor del dropdown
               color: Colors.white,
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
-              // Quita la línea de abajo
               child: DropdownButton<String>(
+                // Si el filtro es 'Personalizado', muestra el 'hint'.
+                // Si no, muestra el valor seleccionado.
                 value:
                     (modelo.filtroSeleccionado == 'Personalizado')
-                        ? null // Muestra el hint si hay rango personalizado
-                        : modelo.filtroSeleccionado, // Muestra el filtro actual
-                hint: const Text(
-                  'Rango Personalizado',
-                ), // Texto si no hay filtro seleccionado
-                isExpanded: true, // Ocupa todo el ancho
+                        ? null
+                        : modelo.filtroSeleccionado,
+                hint: const Text('Rango Personalizado'),
+                isExpanded: true,
                 items:
-                    <String>[
-                          'Semanal',
-                          'Mensual',
-                          'Anual',
-                        ] // Opciones del dropdown
+                    <String>['Semanal', 'Mensual', 'Anual']
                         .map(
                           (String value) => DropdownMenuItem<String>(
                             value: value,
@@ -170,28 +186,22 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                         )
                         .toList(),
                 onChanged: (newValue) {
-                  // Cuando se selecciona una opción
                   if (newValue != null) {
-                    // Llama al método en el modelo para cambiar el filtro
-                    context.read<EstadisticasModelo>().setFiltro(newValue);
+                    modelo.setFiltro(newValue); // Llama al modelo
                   }
                 },
               ),
             ),
           ),
         ),
-        const SizedBox(width: 16), // Espacio entre dropdown y calendario
-        // Ícono de Calendario para abrir el selector de fechas
+        const SizedBox(width: 16),
+        // Botón de ícono para el calendario
         InkWell(
-          // Hace que el contenedor sea clickeable
-          onTap: _mostrarSelectorFecha,
-          borderRadius: BorderRadius.circular(
-            8.0,
-          ), // Borde redondeado para el efecto ripple
+          onTap: _mostrarSelectorFecha, // Llama al selector de fechas
+          borderRadius: BorderRadius.circular(8.0),
           child: Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              // Estilo del botón del ícono
               color: Colors.white,
               borderRadius: BorderRadius.circular(8.0),
               border: Border.all(color: Colors.grey.shade300),
@@ -203,27 +213,24 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
     );
   }
 
-  // Construye una tarjeta de estadística individual (Título, Texto, Gráfica)
+  /// Construye una tarjeta individual de estadística (ej. Cancelaciones).
   Widget _buildTarjetaEstadistica({
     required String titulo,
     required String datoPrincipal,
     required String datoSecundario,
     required List<FlSpot> datosGrafica,
     required Color colorGrafica,
-    required String filtro, // Para formatear ejes de la gráfica
+    required String filtro,
   }) {
     return Card(
-      // Widget Card para elevación y bordes
       elevation: 2.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ), // Bordes redondeados
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0), // Padding interno
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, // Alinea a la izquierda
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título de la tarjeta
+            // Título (ej. "Cancelaciones")
             Text(
               titulo,
               style: const TextStyle(
@@ -233,6 +240,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
               ),
             ),
             const SizedBox(height: 12),
+
             // Textos de resumen
             Text(
               datoPrincipal,
@@ -244,16 +252,16 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
               style: TextStyle(fontSize: 14, color: Colors.grey[800]),
             ),
             const SizedBox(height: 20),
+
             // Contenedor de la gráfica
             SizedBox(
-              height: 120, // Altura fija para la gráfica
+              height: 120,
               child:
                   datosGrafica.isEmpty
-                      ? const Center(
-                        child: Text('No hay datos para mostrar'),
-                      ) // Mensaje si no hay datos
+                      // Muestra un mensaje si no hay datos
+                      ? const Center(child: Text('No hay datos para mostrar'))
+                      // Dibuja la gráfica si hay datos
                       : LineChart(
-                        // Widget de la gráfica de líneas
                         LineChartData(
                           // Configuración de la cuadrícula
                           gridData: FlGridData(
@@ -271,21 +279,22 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                   strokeWidth: 0.5,
                                 ),
                           ),
-                          // Configuración de los títulos de los ejes
+                          // Configuración de los títulos de los ejes (X, Y)
                           titlesData: FlTitlesData(
                             show: true,
                             rightTitles: const AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
-                            ), // Oculta eje derecho
+                            ),
                             topTitles: const AxisTitles(
                               sideTitles: SideTitles(showTitles: false),
-                            ), // Oculta eje superior
+                            ),
+
                             // Eje Inferior (X)
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
-                                showTitles: true, // Muestra etiquetas
-                                reservedSize: 30, // Espacio para las etiquetas
-                                // Función para generar las etiquetas (L,M,X... o 1,5,10...)
+                                showTitles: true,
+                                reservedSize: 30,
+                                // Lógica para mostrar las etiquetas (L, M, X... o 1, 5, 10...)
                                 getTitlesWidget: (value, meta) {
                                   String texto;
                                   final int index = value.toInt();
@@ -326,8 +335,20 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                               : '';
                                       break;
                                     default: // Mensual o Personalizado
+                                      // Muestra etiquetas de forma inteligente para evitar superposición
+                                      int maxDias =
+                                          (filtro == 'Personalizado')
+                                              ? meta.max.toInt()
+                                              : 30;
+                                      int intervalo =
+                                          (maxDias <= 10)
+                                              ? 1
+                                              : (maxDias <= 35)
+                                              ? 5
+                                              : 7;
                                       texto =
-                                          (index == 0 || (index + 1) % 5 == 0)
+                                          (index == 0 ||
+                                                  (index + 1) % intervalo == 0)
                                               ? (index + 1).toString()
                                               : '';
                                   }
@@ -345,21 +366,19 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                 },
                               ),
                             ),
+
                             // Eje Izquierdo (Y)
                             leftTitles: AxisTitles(
                               sideTitles: SideTitles(
-                                showTitles: true, // Muestra etiquetas
-                                reservedSize: 40, // Espacio para los números
-                                // Función para generar las etiquetas numéricas
+                                showTitles: true,
+                                reservedSize: 40,
                                 getTitlesWidget: (value, meta) {
-                                  // Evita dibujar etiquetas en los bordes min/max
-                                  if (value <= meta.min || value >= meta.max) {
+                                  // No dibuja etiqueta en el 0 o en el máximo
+                                  if (value <= meta.min || value == meta.max) {
                                     return Container();
                                   }
                                   return Text(
-                                    value
-                                        .toInt()
-                                        .toString(), // Muestra el número entero
+                                    value.toInt().toString(),
                                     style: const TextStyle(
                                       color: Colors.black54,
                                       fontSize: 10,
@@ -367,7 +386,7 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                                     textAlign: TextAlign.left,
                                   );
                                 },
-                                // Calcula un intervalo adecuado para los números
+                                // Calcula un intervalo automático para el eje Y
                                 interval: _calcularIntervaloY(datosGrafica),
                               ),
                             ),
@@ -383,26 +402,21 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
                           // Datos de la línea
                           lineBarsData: [
                             LineChartBarData(
-                              spots: datosGrafica, // Puntos de datos
-                              isCurved: true, // Línea curva
-                              color: colorGrafica, // Color de la línea
-                              barWidth: 3, // Grosor de la línea
-                              isStrokeCapRound: true, // Extremos redondeados
+                              spots: datosGrafica,
+                              isCurved: true,
+                              color: colorGrafica,
+                              barWidth: 3,
                               dotData: const FlDotData(
                                 show: false,
-                              ), // No mostrar puntos
+                              ), // Oculta los puntos
+                              // Relleno de área bajo la línea
                               belowBarData: BarAreaData(
-                                // Área bajo la línea
                                 show: true,
-                                color: colorGrafica.withAlpha(
-                                  50,
-                                ), // Color del área (transparente)
+                                color: colorGrafica.withAlpha(50),
                               ),
                             ),
                           ],
-                          // Límites del eje Y
-                          minY: 0, // Siempre empezar en 0
-                          // maxY: // Podrías calcular dinámicamente el máximo + un margen
+                          minY: 0, // El eje Y siempre empieza en 0
                         ),
                       ),
             ),
@@ -412,20 +426,19 @@ class _EstadisticasPageState extends State<EstadisticasPage> {
     );
   }
 
-  // Función auxiliar para calcular un intervalo adecuado para el eje Y
   double _calcularIntervaloY(List<FlSpot> datos) {
-    if (datos.isEmpty) return 1; // Intervalo mínimo si no hay datos
+    if (datos.isEmpty) return 1;
     double maxVal = 0;
-    // Encuentra el valor Y máximo
     for (var spot in datos) {
       if (spot.y > maxVal) maxVal = spot.y;
     }
-    // Define intervalos basados en el valor máximo para mejor legibilidad
+
+    if (maxVal == 0) return 1;
+    if (maxVal <= 5) return 1;
     if (maxVal <= 10) return 2;
     if (maxVal <= 20) return 5;
     if (maxVal <= 50) return 10;
     if (maxVal <= 100) return 20;
-    // Para valores mayores, intenta dividir en ~5 intervalos
     return (maxVal / 5).ceilToDouble();
   }
-} // Fin de la clase _EstadisticasPageState
+}

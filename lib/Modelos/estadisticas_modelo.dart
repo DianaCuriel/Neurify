@@ -1,31 +1,52 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart'; // Needed for DateFormat
+import 'package:collection/collection.dart'; // Para la función groupBy
+import 'package:intl/intl.dart';
 
+// Modelo de datos para una Cita de la BBDD.
+class Cita {
+  final int id;
+  final DateTime fecha;
+  final String estado; // 'Realizada', 'Cancelada', 'Pendiente', etc.
+
+  Cita({required this.id, required this.fecha, required this.estado});
+
+  // Constructor para crear desde un Map de la BBDD.
+  factory Cita.fromMap(Map<String, dynamic> map) {
+    return Cita(
+      id: map['id_citas'],
+      fecha: DateTime.parse("${map['fecha']} ${map['hora']}"),
+      estado: map['estado'],
+    );
+  }
+}
+
+// Gestiona el estado y la lógica de la página de estadísticas.
 class EstadisticasModelo extends ChangeNotifier {
   // --- STATE ---
-  String filtroSeleccionado = 'Semanal';
-  DateTimeRange? rangoFechasSeleccionado;
-  List<FlSpot> datosGraficaCancelaciones = [];
+  String filtroSeleccionado = 'Semanal'; // Filtro activo
+  DateTimeRange? rangoFechasSeleccionado; // Rango de fechas del calendario
+  List<FlSpot> datosGraficaCancelaciones = []; // Puntos (X, Y) para la gráfica
   List<FlSpot> datosGraficaCitas = [];
-  String datoPrincipalCancelaciones = '';
+  String datoPrincipalCancelaciones = ''; // Textos de resumen
   String datoSecundarioCancelaciones = '';
   String datoPrincipalCitas = '';
   String datoSecundarioCitas = '';
 
-  // --- CONSTRUCTOR ---
+  bool _isLoading = false; // Estado de carga (true si está buscando datos)
+  bool get isLoading => _isLoading;
+
+  // Carga los datos iniciales al crear.
   EstadisticasModelo() {
-    // Load initial data when the model is created
-    _cargarDatos();
+    cargarDatosActuales();
   }
 
   // --- GETTERS ---
-  // Formats the title based on the selected filter or date range
+  // Devuelve el título (ej. "Resumen - Semanal" o "01/01 - 07/01").
   String get tituloFecha {
     if (rangoFechasSeleccionado != null) {
       final formato = DateFormat('dd/MM/yyyy');
-      // Asegura que start y end no sean nulos antes de formatear
       final startFormatted = formato.format(rangoFechasSeleccionado!.start);
       final endFormatted = formato.format(rangoFechasSeleccionado!.end);
       return '$startFormatted - $endFormatted';
@@ -33,162 +54,239 @@ class EstadisticasModelo extends ChangeNotifier {
     return 'Resumen - $filtroSeleccionado';
   }
 
-  // --- PUBLIC METHODS ---
-  // Called when the dropdown filter changes
+  // --- MÉTODOS PÚBLICOS ---
+
+  // Actualiza el filtro (Semanal, Mensual, Anual) y recarga.
   void setFiltro(String nuevoFiltro) {
-    // Avoid unnecessary reloads if the filter hasn't changed
     if (filtroSeleccionado == nuevoFiltro && rangoFechasSeleccionado == null) {
-      return; // If same filter and no custom range, do nothing
+      return;
     }
     filtroSeleccionado = nuevoFiltro;
-    rangoFechasSeleccionado =
-        null; // Clear custom range when selecting a preset filter
-    _cargarDatos(); // Reload data with the new filter
+    rangoFechasSeleccionado = null; // Limpia el rango personalizado
+    cargarDatosActuales();
   }
 
-  // Called when a custom date range is selected
+  // Actualiza a un rango personalizado y recarga.
   void setRangoPersonalizado(DateTimeRange nuevoRango) {
-    // Optional check to avoid reloading identical range selection
     if (rangoFechasSeleccionado != null &&
         rangoFechasSeleccionado!.start == nuevoRango.start &&
         rangoFechasSeleccionado!.end == nuevoRango.end) {
       return;
     }
     rangoFechasSeleccionado = nuevoRango;
-    filtroSeleccionado =
-        'Personalizado'; // Update filter state to reflect custom range
-    _cargarDatos(
-      rangoPersonalizado: nuevoRango,
-    ); // Reload data with the custom range
+    filtroSeleccionado = 'Personalizado';
+    cargarDatosActuales();
   }
 
-  // --- METHOD CALLED BY THE REFRESH BUTTON ---
-  /// Reloads data based on the currently selected filter or date range.
-  void cargarDatosActuales() {
-    print(
-      "Recargando datos con filtro: $filtroSeleccionado y rango: $rangoFechasSeleccionado",
-    ); // Debug log
-    // Simply call the internal loading method with the current range
-    // It will be null if a preset filter ('Semanal', 'Mensual', etc.) is active,
-    // which is what _cargarDatos expects in that case.
-    _cargarDatos(rangoPersonalizado: rangoFechasSeleccionado);
-  }
-  // --- END OF ADDED METHOD ---
+  // Método principal para cargar/recargar los datos.
+  Future<void> cargarDatosActuales() async {
+    _isLoading = true;
+    notifyListeners(); // Notifica a la UI que empiece a mostrar el loader
 
-  // --- INTERNAL LOGIC ---
-  // Simulates loading data based on the filter/range
-  void _cargarDatos({DateTimeRange? rangoPersonalizado}) {
-    final random = Random();
-    List<FlSpot> cancelacionesTemp = [];
-    List<FlSpot> citasTemp = [];
-    String filtroAplicado = filtroSeleccionado; // Start with the current state
+    // 1. Determina el rango de fechas para la consulta
+    DateTime fechaFin = DateTime.now();
+    DateTime fechaInicio;
 
-    // Determine the actual filter/range to use for loading
-    if (rangoPersonalizado != null) {
-      filtroAplicado = 'Personalizado';
-      // Calculate number of days in the range, including the end date
-      // Ensure positive duration even for same-day selection
-      final dias = max(1, rangoPersonalizado.duration.inDays + 1);
-      print("Cargando datos personalizados para $dias días."); // Debug log
-      for (int i = 0; i < dias; i++) {
-        // Generate random data points for each day in the range
-        cancelacionesTemp.add(
-          FlSpot(i.toDouble(), random.nextInt(6).toDouble()),
-        ); // 0 to 5
-        citasTemp.add(
-          FlSpot(i.toDouble(), 5 + random.nextInt(11).toDouble()),
-        ); // 5 to 15
-      }
+    if (rangoFechasSeleccionado != null) {
+      fechaInicio = rangoFechasSeleccionado!.start;
+      fechaFin = DateTime(
+        rangoFechasSeleccionado!.end.year,
+        rangoFechasSeleccionado!.end.month,
+        rangoFechasSeleccionado!.end.day,
+        23,
+        59,
+        59,
+      );
     } else {
-      // Use the selected preset filter if no custom range is provided
-      print("Cargando datos para filtro: $filtroAplicado"); // Debug log
-      switch (filtroAplicado) {
+      switch (filtroSeleccionado) {
         case 'Mensual':
-          for (int i = 0; i < 30; i++) {
-            cancelacionesTemp.add(
-              FlSpot(i.toDouble(), random.nextInt(8).toDouble()),
-            ); // 0 to 7
-            citasTemp.add(
-              FlSpot(i.toDouble(), 7 + random.nextInt(16).toDouble()),
-            ); // 7 to 22
-          }
+          fechaInicio = DateTime(fechaFin.year, fechaFin.month, 1);
           break;
         case 'Anual':
-          for (int i = 0; i < 12; i++) {
-            // Assuming 1 point per month
-            cancelacionesTemp.add(
-              FlSpot(i.toDouble(), 20 + random.nextInt(31).toDouble()),
-            ); // 20 to 50
-            citasTemp.add(
-              FlSpot(i.toDouble(), 60 + random.nextInt(81).toDouble()),
-            ); // 60 to 140
-          }
-          break;
-        case 'Semanal':
-        default: // Default to 'Semanal' if filter is unrecognized
-          filtroAplicado = 'Semanal'; // Ensure filterAplicado reflects this
-          for (int i = 0; i < 7; i++) {
-            cancelacionesTemp.add(
-              FlSpot(i.toDouble(), random.nextInt(6).toDouble()),
-            ); // 0 to 5
-            citasTemp.add(
-              FlSpot(i.toDouble(), 5 + random.nextInt(11).toDouble()),
-            ); // 5 to 15
-          }
-      }
-    }
-
-    // Update the model's state variables
-    datosGraficaCancelaciones = cancelacionesTemp;
-    datosGraficaCitas = citasTemp;
-    _actualizarTextosResumen(
-      filtroAplicado,
-    ); // Update summary text based on the loaded filter
-
-    // Notify listeners (the UI) that the data has changed and it should rebuild
-    notifyListeners();
-    print("Datos cargados y UI notificada."); // Debug log
-  }
-
-  // Updates the summary text strings based on the loaded data/filter
-  void _actualizarTextosResumen(String filtroAplicado) {
-    if (filtroAplicado == 'Personalizado') {
-      // Example calculations for custom range (replace with real logic if needed)
-      final totalCancelaciones =
-          datosGraficaCancelaciones
-              .fold<double>(0, (prev, e) => prev + e.y)
-              .toInt();
-      final totalCitas =
-          datosGraficaCitas.fold<double>(0, (prev, e) => prev + e.y).toInt();
-      datoPrincipalCancelaciones =
-          'Rango: $tituloFecha'; // Use the getter for formatted dates
-      datoSecundarioCancelaciones = 'Total Cancelaciones: $totalCancelaciones';
-      datoPrincipalCitas = 'Rango: $tituloFecha';
-      datoSecundarioCitas = 'Total Citas: $totalCitas';
-    } else {
-      // Placeholder/Example texts for preset filters
-      // In a real app, you would calculate these based on the loaded data
-      switch (filtroAplicado) {
-        case 'Mensual':
-          datoPrincipalCancelaciones = 'Pico cancelaciones mes: Día 15 (Ej.)';
-          datoSecundarioCancelaciones = 'Valle cancelaciones mes: Día 3 (Ej.)';
-          datoPrincipalCitas = 'Pico citas mes: Día 28 (Ej.)';
-          datoSecundarioCitas = 'Valle citas mes: Día 1 (Ej.)';
-          break;
-        case 'Anual':
-          datoPrincipalCancelaciones = 'Pico cancelaciones año: Dic (Ej.)';
-          datoSecundarioCancelaciones = 'Valle cancelaciones año: Feb (Ej.)';
-          datoPrincipalCitas = 'Pico citas año: Nov (Ej.)';
-          datoSecundarioCitas = 'Valle citas año: Jun (Ej.)';
+          fechaInicio = DateTime(fechaFin.year, 1, 1);
           break;
         case 'Semanal':
         default:
-          datoPrincipalCancelaciones = 'Pico cancelaciones sem: Jue (Ej.)';
-          datoSecundarioCancelaciones = 'Valle cancelaciones sem: Mar (Ej.)';
-          datoPrincipalCitas = 'Pico citas sem: Sáb (Ej.)';
-          datoSecundarioCitas = 'Valle citas sem: Mié (Ej.)';
+          fechaInicio = fechaFin.subtract(Duration(days: fechaFin.weekday - 1));
+          fechaInicio = DateTime(
+            fechaInicio.year,
+            fechaInicio.month,
+            fechaInicio.day,
+          );
+          break;
       }
     }
-    // No need to call notifyListeners() here, as it's called at the end of _cargarDatos
+
+    if (fechaInicio.isAfter(fechaFin)) {
+      fechaInicio = DateTime(fechaFin.year, fechaFin.month, fechaFin.day);
+    }
+
+    // 2. Carga y procesa los datos
+    try {
+      //
+      // *********************
+      // TODO: Reemplaza esta sección con tu llamada a la base de datos
+      // *********************
+      //
+      // Ejemplo:
+      // List<Cita> citasReales = await TuDatabaseHelper.instance.getCitas(fechaInicio, fechaFin);
+      //
+
+      // --- Simulación de datos (BORRA ESTA LÍNEA CUANDO TENGAS DATOS REALES) ---
+      List<Cita> citasReales = await _simularDatosDB(fechaInicio, fechaFin);
+
+      // 3. Filtra los datos obtenidos
+      final citasCanceladas =
+          citasReales.where((c) => c.estado == 'Cancelada').toList();
+      final citasRealizadas =
+          citasReales.where((c) => c.estado == 'Realizada').toList();
+
+      // 4. Agrupa los datos para las gráficas
+      datosGraficaCancelaciones = _agruparDatosParaGrafica(
+        citasCanceladas,
+        fechaInicio,
+        fechaFin,
+        filtroSeleccionado,
+      );
+      datosGraficaCitas = _agruparDatosParaGrafica(
+        citasRealizadas,
+        fechaInicio,
+        fechaFin,
+        filtroSeleccionado,
+      );
+
+      // 5. Actualiza los textos de resumen
+      _actualizarTextosResumen(
+        citasCanceladas,
+        citasRealizadas,
+        filtroSeleccionado,
+      );
+    } catch (e) {
+      print("Error al cargar estadísticas: $e");
+      datoPrincipalCancelaciones = "Error al cargar datos";
+      // ... (etc.)
+    }
+
+    _isLoading = false;
+    notifyListeners(); // Notifica a la UI que se redibuje
   }
-} // End of EstadisticasModelo class
+
+  // --- MÉTODOS INTERNOS ---
+
+  // Convierte una List<Cita> en una List<FlSpot> para la gráfica.
+  List<FlSpot> _agruparDatosParaGrafica(
+    List<Cita> citas,
+    DateTime fechaInicio,
+    DateTime fechaFin,
+    String filtro,
+  ) {
+    if (citas.isEmpty) return [];
+
+    if (filtro == 'Anual') {
+      final gruposPorMes = groupBy(citas, (c) => c.fecha.month);
+      return List.generate(12, (indexMes) {
+        int mes = indexMes + 1;
+        int total = gruposPorMes[mes]?.length ?? 0;
+        return FlSpot(indexMes.toDouble(), total.toDouble());
+      });
+    }
+
+    // Agrupa por día para 'Semanal', 'Mensual' o 'Personalizado'
+    int numDias = fechaFin.difference(fechaInicio).inDays + 1;
+    final gruposPorDia = <int, int>{};
+
+    for (var cita in citas) {
+      int diaIndex = cita.fecha.difference(fechaInicio).inDays;
+      if (diaIndex >= 0 && diaIndex < numDias) {
+        gruposPorDia.update(diaIndex, (value) => value + 1, ifAbsent: () => 1);
+      }
+    }
+
+    return List.generate(numDias, (indexDia) {
+      double total = (gruposPorDia[indexDia] ?? 0).toDouble();
+      return FlSpot(indexDia.toDouble(), total);
+    });
+  }
+
+  // Calcula los textos de resumen (totales y picos).
+  void _actualizarTextosResumen(
+    List<Cita> canceladas,
+    List<Cita> realizadas,
+    String filtro,
+  ) {
+    datoPrincipalCancelaciones = "Total Cancelaciones: ${canceladas.length}";
+    datoPrincipalCitas = "Total Citas: ${realizadas.length}";
+
+    if (datosGraficaCancelaciones.isNotEmpty) {
+      final picoCancel = datosGraficaCancelaciones.reduce(
+        (a, b) => a.y > b.y ? a : b,
+      );
+      String etiquetaPico = _getEtiquetaPico(picoCancel.x.toInt(), filtro);
+      datoSecundarioCancelaciones =
+          "Pico: $etiquetaPico (${picoCancel.y.toInt()})";
+    } else {
+      datoSecundarioCancelaciones = "Pico: N/A (0)";
+    }
+
+    if (datosGraficaCitas.isNotEmpty) {
+      final picoCitas = datosGraficaCitas.reduce((a, b) => a.y > b.y ? a : b);
+      String etiquetaPico = _getEtiquetaPico(picoCitas.x.toInt(), filtro);
+      datoSecundarioCitas = "Pico: $etiquetaPico (${picoCitas.y.toInt()})";
+    } else {
+      datoSecundarioCitas = "Pico: N/A (0)";
+    }
+  }
+
+  // Helper para formatear la etiqueta del eje X (ej. 'Lun', 'Ene', 'Día 5').
+  String _getEtiquetaPico(int index, String filtro) {
+    switch (filtro) {
+      case 'Anual':
+        const meses = [
+          'Ene',
+          'Feb',
+          'Mar',
+          'Abr',
+          'May',
+          'Jun',
+          'Jul',
+          'Ago',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dic',
+        ];
+        return (index >= 0 && index < 12) ? meses[index] : 'N/A';
+      case 'Semanal':
+        const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        return (index >= 0 && index < 7) ? dias[index] : 'N/A';
+      default:
+        return 'Día ${index + 1}';
+    }
+  }
+
+  // --- FUNCIÓN DE SIMULACIÓN (REEMPLAZAR) ---
+  Future<List<Cita>> _simularDatosDB(DateTime inicio, DateTime fin) async {
+    await Future.delayed(const Duration(seconds: 1)); // Simula espera de red
+    print("Simulando datos de DB desde $inicio hasta $fin");
+    List<Cita> citasSimuladas = [];
+    final random = Random();
+    int numDias = max(1, fin.difference(inicio).inDays + 1);
+
+    for (int i = 0; i < numDias; i++) {
+      DateTime diaActual = inicio.add(Duration(days: i));
+      int numCanceladas = random.nextInt(4);
+      for (int c = 0; c < numCanceladas; c++) {
+        citasSimuladas.add(
+          Cita(id: i * 100 + c, fecha: diaActual, estado: 'Cancelada'),
+        );
+      }
+      int numRealizadas = 5 + random.nextInt(10);
+      for (int r = 0; r < numRealizadas; r++) {
+        citasSimuladas.add(
+          Cita(id: i * 200 + r, fecha: diaActual, estado: 'Realizada'),
+        );
+      }
+    }
+    return citasSimuladas;
+  }
+}
