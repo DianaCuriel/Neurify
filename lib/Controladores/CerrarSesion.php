@@ -1,18 +1,18 @@
 <?php
-include 'conexion.php';
 header('Content-Type: application/json');
+include 'conexion.php'; // contiene $conn
 
-$data = json_decode(file_get_contents("php://input"), true);
-$id_usuario = $data["id_usuario"];
-
-if ($id_usuario) {
-    // Ejemplo: actualizar estado de sesión en la base de datos
-    $sql = "UPDATE credenciales SET sesion_activa = 0 WHERE id_credenciales = '$id_usuario'";
-    if (mysqli_query($conexion, $sql)) {
-        echo json_encode(["success" => true, "mensaje" => "Sesión cerrada correctamente."]);
-    } else {
-        echo json_encode(["success" => false, "mensaje" => "Error al cerrar sesión."]);
-    }
+// Verifica que la conexión esté activa
+if ($conn && $conn->ping()) {
+    $conn->close(); // 🔹 Cierra la conexión con MySQL
+    echo json_encode([
+        'success' => true,
+        'mensaje' => 'Conexión cerrada correctamente.'
+    ]);
 } else {
-    echo json_encode(["success" => false, "mensaje" => "Faltan datos."]);
+    echo json_encode([
+        'success' => false,
+        'mensaje' => 'No hay conexión activa o ya está cerrada.'
+    ]);
 }
+?>
