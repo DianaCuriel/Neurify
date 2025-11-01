@@ -21,7 +21,9 @@ class _CerrarsesionPageState extends State<CerrarsesionPage> {
 
     final prefs = await SharedPreferences.getInstance();
     final idUsuario = prefs.getInt('id_credenciales'); // o 'id_usuario'
-    final url = Uri.parse('https://TU_DOMINIO/logout.php');
+    final url = Uri.parse(
+      'http://servidor-morales11.sytes.net:5050/CerrarSesion.php',
+    );
 
     try {
       // Petición al servidor
