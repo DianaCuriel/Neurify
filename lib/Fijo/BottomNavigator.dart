@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:neurify/Visuales/Modificaciones.dart';
 import 'package:neurify/Visuales/calendario.dart';
 import 'package:neurify/Visuales/estadisticas_page.dart';
+import 'package:neurify/Visuales/CerrarSesion.dart';
 
 class MiBottomNav extends StatelessWidget {
   const MiBottomNav({super.key});
@@ -22,6 +23,10 @@ class MiBottomNav extends StatelessWidget {
           icon: Icon(Icons.bar_chart),
           label: "Estadísticas",
         ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.gps_fixed),
+          label: "Configuraciones",
+        ),
       ],
       onTap: (index) {
         switch (index) {
@@ -41,6 +46,12 @@ class MiBottomNav extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => EstadisticasPage()),
+            );
+            break;
+          case 3:
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => CerrarsesionPage()),
             );
             break;
         }
