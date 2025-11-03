@@ -4,12 +4,16 @@ import 'package:neurify/Visuales/login_screen.dart';
 import 'Fijo/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:neurify/modelos/estadisticas_modelo.dart';
+import '../Modelos/Calendario_model.dart';
 
 //#1.2
 void main() {
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => EstadisticasModelo())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => EstadisticasModelo()),
+        ChangeNotifierProvider(create: (_) => CalendarioModel()),
+      ],
       child: const MyApp(),
     ),
   );

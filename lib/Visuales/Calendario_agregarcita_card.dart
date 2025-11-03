@@ -1,3 +1,4 @@
+// Calendario_agregarcita_card.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/app_theme.dart';
@@ -37,7 +38,6 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Encabezado con X y Guardar
             SizedBox(
               height: 80,
               child: Stack(
@@ -86,16 +86,12 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Sección Datos personales
             AppTheme.subtitleText('Datos personales'),
             const SizedBox(height: 12),
             _campoTexto(nombreController, "Nombre del cliente"),
             _campoTexto(asuntoController, "Asunto"),
             _campoTexto(numeroController, "Número"),
-
             const SizedBox(height: 20),
-            // Sección Datos del día
             AppTheme.subtitleText('Datos del día'),
             const SizedBox(height: 12),
             _campoFecha(),
