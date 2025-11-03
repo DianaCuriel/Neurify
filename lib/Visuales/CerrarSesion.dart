@@ -15,52 +15,41 @@ class CerrarsesionPage extends StatefulWidget {
 
 class _CerrarsesionPageState extends State<CerrarsesionPage> {
   bool _cargando = false;
-
   Future<void> _cerrarSesion() async {
     setState(() => _cargando = true);
 
     final prefs = await SharedPreferences.getInstance();
-    final idUsuario = prefs.getInt('id_credenciales'); // o 'id_usuario'
+    final usuario = prefs.getString('usuario'); // guardado en login
+
     final url = Uri.parse(
       'http://servidor-morales11.sytes.net:5050/CerrarSesion.php',
     );
 
     try {
-      print("🚀 Intentando cerrar sesión para id_usuario: $idUsuario");
-      print("📡 URL: $url");
+      print('🚀 Intentando cerrar sesión para usuario: $usuario');
 
-      final body = jsonEncode({'id_usuario': idUsuario});
-      print("📦 Body enviado: $body");
-
-      // Petición al servidor
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode({'id_usuario': usuario}),
       );
 
-      print("📶 Código de respuesta: ${response.statusCode}");
-      print("📄 Body de respuesta: ${response.body}");
+      print('📦 Body enviado: {"id_usuario": "$usuario"}');
+      print('📡 HTTP: ${response.statusCode}');
+      print('📤 Respuesta: ${response.body}');
 
       final data = jsonDecode(response.body);
-      print("📝 Data decodificada: $data");
-
       if (data['success'] == true) {
-        // Limpiar sesión local
         await prefs.clear();
-
         if (!mounted) return;
-        // Redirigir al login
         Navigator.pushReplacementNamed(context, '/login');
       } else {
-        print("⚠️ Error en el servidor: ${data['mensaje']}");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cerrar sesión en el servidor')),
+          SnackBar(content: Text(data['mensaje'] ?? 'Error al cerrar sesión')),
         );
       }
-    } catch (e, stack) {
-      print("❌ Excepción al cerrar sesión: $e");
-      print(stack);
+    } catch (e) {
+      print('❌ Excepción al cerrar sesión: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error de conexión con el servidor')),
       );
@@ -91,9 +80,7 @@ class _CerrarsesionPageState extends State<CerrarsesionPage> {
                   ),
                 ),
       ),
-      bottomNavigationBar: const MiBottomNav(
-        currentIndex: 3, // aquí el índice de Estadísticas
-      ),
+      bottomNavigationBar: const MiBottomNav(currentIndex: 3),
     );
   }
 }

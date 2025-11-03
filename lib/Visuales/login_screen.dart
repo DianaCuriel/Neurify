@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Fijo/app_theme.dart';
 import 'Calendario.dart';
@@ -17,56 +19,70 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
-  static const String _demoUser = 'isaac';
-  static const String _demoPass = '1234';
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return; // validar formulario
 
-  void _login() async {
-    // Se valida el formulario antes de la operación asíncrona
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
+    setState(() => _isLoading = true);
 
-    if (_usernameController.text == _demoUser &&
-        _passwordController.text == _demoPass) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+    final url = Uri.parse('http://servidor-morales11.sytes.net:5050/Login.php');
 
-      // 🔹 Guarda un ID de usuario de ejemplo
-      await prefs.setInt(
-        'id_credenciales',
-        1,
-      ); // <- aquí va el ID real en tu backend
+    final body = jsonEncode({
+      'usuario': _usernameController.text.trim(),
+      'contraseña': _passwordController.text.trim(),
+    });
 
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: body,
+      );
+
+      print('Código HTTP: ${response.statusCode}');
+      print('Respuesta: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Guardar datos en SharedPreferences si quieres
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString('usuario', _usernameController.text.trim());
+
+        // Redirigir a Calendario
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
           MaterialPageRoute(builder: (context) => const CalendarioPage()),
         );
-      }
-    } else {
-      // --- CORRECCIÓN 1: 'use_build_context_synchronously' ---
-      // También se aplica aquí, ya que está en el mismo scope asíncrono.
-      if (mounted) {
+      } else {
+        // Mostrar error al usuario
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuario o contraseña incorrectos'),
-            backgroundColor: Colors.redAccent,
+          SnackBar(
+            content: Text(
+              data['mensaje'] ?? 'Usuario o contraseña incorrectos',
+            ),
           ),
         );
       }
+    } catch (e) {
+      print('Error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   void _goToForgotPassword() {
-    Navigator.of(context).push(
+    Navigator.push(
+      context,
       MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
     );
-  }
-
-  void _goToCalendario() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => const CalendarioPage()));
   }
 
   @override
@@ -82,28 +98,26 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SafeArea(
               child: Column(
                 children: [
+                  // LOGO Y TÍTULO
                   Expanded(
                     flex: 2,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/logo.png', // Ruta de tu logo
-                          height: 150, // Puedes ajustar este valor
-                        ),
+                        Image.asset('assets/images/logo.png', height: 150),
                         const SizedBox(height: 20),
                         Text(
                           'Iniciar sesión',
                           style: AppTheme.titleStyle.copyWith(
                             fontSize: 18,
-                            // --- CORRECCIÓN 2: 'deprecated_member_use' ---
-                            // Se reemplaza withOpacity por withAlpha
                             color: Colors.white.withAlpha((255 * 0.7).round()),
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  // FORMULARIO
                   Expanded(
                     flex: 3,
                     child: Container(
@@ -125,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              'Nombre',
+                              'Usuario',
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontWeight: FontWeight.bold,
@@ -135,14 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             TextFormField(
                               controller: _usernameController,
                               textAlign: TextAlign.center,
-                              textInputAction:
-                                  TextInputAction
-                                      .next, // <- Mueve al siguiente campo
-                              onFieldSubmitted: (_) {
-                                FocusScope.of(
-                                  context,
-                                ).nextFocus(); // <- Salta al campo de contraseña
-                              },
+                              textInputAction: TextInputAction.next,
                               decoration: InputDecoration(
                                 filled: true,
                                 fillColor: Colors.grey[200],
@@ -153,11 +160,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator:
                                   (value) =>
-                                      (value == null || value.isEmpty)
-                                          ? 'Ingrese su nombre'
+                                      value == null || value.isEmpty
+                                          ? 'Ingrese su usuario'
                                           : null,
                             ),
-
                             const SizedBox(height: 20),
                             const Text(
                               'Contraseña',
@@ -194,13 +200,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator:
                                   (value) =>
-                                      (value == null || value.isEmpty)
+                                      value == null || value.isEmpty
                                           ? 'Ingrese su contraseña'
                                           : null,
                             ),
                             const SizedBox(height: 30),
+
+                            // BOTÓN LOGIN
                             ElevatedButton(
-                              onPressed: _goToCalendario,
+                              onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primaryColor,
                                 padding: const EdgeInsets.symmetric(
@@ -210,15 +218,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              // Asumiendo que corregirás esto en app_theme.dart
-                              child: AppTheme.tituloBoton('Entrar'),
+                              child:
+                                  _isLoading
+                                      ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                      : AppTheme.tituloBoton('Entrar'),
                             ),
                             const SizedBox(height: 20),
+
+                            // OLVIDAR CONTRASEÑA
                             Center(
                               child: TextButton(
                                 onPressed: _goToForgotPassword,
                                 child: const Text(
-                                  'Olvisate tu contraseña?',
+                                  '¿Olvidaste tu contraseña?',
                                   style: TextStyle(color: Colors.grey),
                                 ),
                               ),
