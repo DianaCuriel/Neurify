@@ -26,14 +26,25 @@ class _CerrarsesionPageState extends State<CerrarsesionPage> {
     );
 
     try {
+      print("🚀 Intentando cerrar sesión para id_usuario: $idUsuario");
+      print("📡 URL: $url");
+
+      final body = jsonEncode({'id_usuario': idUsuario});
+      print("📦 Body enviado: $body");
+
       // Petición al servidor
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id_usuario': idUsuario}),
+        body: body,
       );
 
+      print("📶 Código de respuesta: ${response.statusCode}");
+      print("📄 Body de respuesta: ${response.body}");
+
       final data = jsonDecode(response.body);
+      print("📝 Data decodificada: $data");
+
       if (data['success'] == true) {
         // Limpiar sesión local
         await prefs.clear();
@@ -42,11 +53,14 @@ class _CerrarsesionPageState extends State<CerrarsesionPage> {
         // Redirigir al login
         Navigator.pushReplacementNamed(context, '/login');
       } else {
+        print("⚠️ Error en el servidor: ${data['mensaje']}");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al cerrar sesión en el servidor')),
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      print("❌ Excepción al cerrar sesión: $e");
+      print(stack);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error de conexión con el servidor')),
       );

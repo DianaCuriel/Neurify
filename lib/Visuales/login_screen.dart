@@ -32,8 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
 
-      // --- CORRECCIÓN 1: 'use_build_context_synchronously' ---
-      // Se comprueba si el widget todavía está en pantalla antes de usar su BuildContext.
+      // 🔹 Guarda un ID de usuario de ejemplo
+      await prefs.setInt(
+        'id_credenciales',
+        1,
+      ); // <- aquí va el ID real en tu backend
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const CalendarioPage()),
