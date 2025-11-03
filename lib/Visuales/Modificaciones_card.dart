@@ -90,7 +90,14 @@ class ModificacionesCard extends StatelessWidget {
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => EditarModificacionPage(mod: mod),
+                      builder:
+                          (_) => ChangeNotifierProvider.value(
+                            value: Provider.of<ModificacionesModel>(
+                              context,
+                              listen: false,
+                            ),
+                            child: EditarModificacionPage(mod: mod),
+                          ),
                     );
                   },
                   icon: const Icon(Icons.edit),

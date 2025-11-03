@@ -48,7 +48,10 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
                 dropdownColor: Colors.white, // color del menú desplegable
                 items: const [
                   DropdownMenuItem(value: 'Todas', child: Text('Todas')),
-                  DropdownMenuItem(value: 'Puntual', child: Text('Puntual')),
+                  DropdownMenuItem(
+                    value: 'Puntual',
+                    child: Text('Dia puntual'),
+                  ),
                   DropdownMenuItem(
                     value: 'Rango diario',
                     child: Text('Rango diario'),

@@ -75,12 +75,18 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
   Widget _buildDiasSemanaSelector() {
     final dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
     return Wrap(
-      spacing: 6,
+      spacing: 8,
+      runSpacing: 4,
       children: List.generate(7, (i) {
         final selected = _diasSemana.contains(i);
         return ChoiceChip(
           label: Text(dias[i]),
           selected: selected,
+          selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+          labelStyle: TextStyle(
+            color: selected ? AppTheme.primaryColor : Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
           onSelected: (val) {
             setState(() {
               if (val) {
@@ -97,113 +103,190 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final Map<TipoModificacion, String> nombresTipo = {
+      TipoModificacion.unica: "Día puntual",
+      TipoModificacion.rangoDiario: "Rango diario",
+      TipoModificacion.semanal: "Semanal",
+    };
+
     final modelo = Provider.of<ModificacionesModel>(context, listen: false);
 
-    return Padding(
-      padding: MediaQuery.of(context).viewInsets,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          top: 16,
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                "Editar Bloqueo",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Encabezado
+            SizedBox(
+              height: 80,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        elevation: 4,
+                      ),
+                      onPressed: () {
+                        final updated = Modificacion(
+                          titulo: _tituloController.text,
+                          fechaInicio: _fechaInicio,
+                          fechaFin: _fechaFin,
+                          horaInicio: _horaInicio,
+                          horaFin: _horaFin,
+                          tipo: _tipo,
+                          diasSemana:
+                              _tipo == TipoModificacion.semanal
+                                  ? _diasSemana
+                                  : null,
+                        );
+                        modelo.removeModificacion(widget.mod);
+                        modelo.addModificacion(updated);
+                        Navigator.pop(context);
+                      },
+                      child: Text("Guardar", style: AppTheme.TituloBoton),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 48,
+                    child: Text(
+                      "Editar bloqueo",
+                      style: AppTheme.sutittleStyle.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _tituloController,
-                decoration: const InputDecoration(labelText: "Título"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<TipoModificacion>(
+            ),
+            const SizedBox(height: 20),
+
+            // Campo Título
+            _campoTexto(_tituloController, "Título del bloqueo"),
+
+            // Tipo de modificación
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: DropdownButtonFormField<TipoModificacion>(
                 value: _tipo,
+                decoration: _decoracionCampo("Tipo de bloqueo"),
+                dropdownColor: Colors.white,
                 items:
                     TipoModificacion.values
                         .map(
-                          (e) =>
-                              DropdownMenuItem(value: e, child: Text(e.name)),
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(nombresTipo[e] ?? e.name),
+                          ),
                         )
                         .toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _tipo = val);
                 },
-                decoration: const InputDecoration(labelText: "Tipo"),
               ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  "Fecha inicio: ${_fechaInicio.toLocal().toIso8601String().split('T').first}",
-                ),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: _pickFechaInicio,
+            ),
+
+            // Fechas y horas
+            _campoFecha("Fecha inicio", _fechaInicio, _pickFechaInicio),
+            if (_tipo != TipoModificacion.unica)
+              _campoFecha("Fecha fin", _fechaFin, _pickFechaFin),
+            _campoHora("Hora inicio", _horaInicio, _pickHoraInicio),
+            _campoHora("Hora fin", _horaFin, _pickHoraFin),
+
+            if (_tipo == TipoModificacion.semanal) ...[
+              const SizedBox(height: 8),
+              Text(
+                "Días de la semana",
+                style: AppTheme.bodyStyle.copyWith(fontWeight: FontWeight.w600),
               ),
-              if (_tipo != TipoModificacion.unica)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    "Fecha fin: ${_fechaFin.toLocal().toIso8601String().split('T').first}",
-                  ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: _pickFechaFin,
-                ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text("Hora inicio: ${_horaInicio.format(context)}"),
-                trailing: const Icon(Icons.access_time),
-                onTap: _pickHoraInicio,
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text("Hora fin: ${_horaFin.format(context)}"),
-                trailing: const Icon(Icons.access_time),
-                onTap: _pickHoraFin,
-              ),
-              if (_tipo == TipoModificacion.semanal) ...[
-                const SizedBox(height: 8),
-                Text("Días de la semana"),
-                _buildDiasSemanaSelector(),
-              ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                ),
-                onPressed: () {
-                  final updated = Modificacion(
-                    titulo: _tituloController.text,
-                    fechaInicio: _fechaInicio,
-                    fechaFin: _fechaFin,
-                    horaInicio: _horaInicio,
-                    horaFin: _horaFin,
-                    tipo: _tipo,
-                    diasSemana:
-                        _tipo == TipoModificacion.semanal ? _diasSemana : null,
-                  );
-                  modelo.removeModificacion(widget.mod);
-                  modelo.addModificacion(updated);
-                  Navigator.pop(context);
-                },
-                child: const Text("Guardar cambios"),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () {
-                  modelo.removeModificacion(widget.mod);
-                  Navigator.pop(context);
-                },
-                child: const Text("Eliminar bloqueo"),
-              ),
+              const SizedBox(height: 6),
+              _buildDiasSemanaSelector(),
             ],
-          ),
+            const SizedBox(height: 24),
+          ],
         ),
+      ),
+    );
+  }
+
+  // ==== Widgets reutilizables ====
+
+  InputDecoration _decoracionCampo(String label) => InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+  );
+
+  Widget _campoTexto(TextEditingController controller, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        decoration: _decoracionCampo(label),
+      ),
+    );
+  }
+
+  Widget _campoFecha(String label, DateTime fecha, Function() onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        readOnly: true,
+        decoration: _decoracionCampo(label).copyWith(
+          suffixIcon: const Icon(Icons.calendar_today),
+          hintText: "${fecha.day}/${fecha.month}/${fecha.year}",
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _campoHora(String label, TimeOfDay hora, Function() onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        readOnly: true,
+        decoration: _decoracionCampo(label).copyWith(
+          suffixIcon: const Icon(Icons.access_time),
+          hintText: hora.format(context),
+        ),
+        onTap: onTap,
       ),
     );
   }

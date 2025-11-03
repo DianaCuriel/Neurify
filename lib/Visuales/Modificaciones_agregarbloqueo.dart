@@ -152,7 +152,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
         ),
         dropdownColor: Colors.white,
         items: const [
-          DropdownMenuItem(value: 'Puntual', child: Text('Puntual')),
+          DropdownMenuItem(value: 'Puntual', child: Text('Dia puntual')),
           DropdownMenuItem(value: 'Rango diario', child: Text('Diario')),
           DropdownMenuItem(value: 'Semanal', child: Text('Semanal')),
         ],
