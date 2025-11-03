@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/app_theme.dart';
 import '../Modelos/Modificaciones_model.dart';
+import '../Visuales/Modificaciones_edicion.dart';
 
 class ModificacionesCard extends StatelessWidget {
   final Modificacion mod;
@@ -85,10 +86,16 @@ class ModificacionesCard extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: () {
-                    // Editar
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => EditarModificacionPage(mod: mod),
+                    );
                   },
                   icon: const Icon(Icons.edit),
                 ),
+
                 ElevatedButton(
                   onPressed: () {
                     final modelo = Provider.of<ModificacionesModel>(

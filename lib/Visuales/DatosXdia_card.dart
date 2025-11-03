@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/app_theme.dart';
 import '../Modelos/Calendario_model.dart';
+import 'Calendario_DatosXdia_editar.dart';
 
 class DatosxdiaCard extends StatefulWidget {
   final bool isExpanded;
@@ -137,20 +138,37 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
               children: [
                 IconButton(
                   onPressed: () {
-                    // acción para editar
+                    // Abrir modal para editar la cita
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => EditarCitaPage(cita: cita),
+                    );
                   },
                   icon: const Icon(Icons.edit),
+                  tooltip: "Editar cita",
                 ),
+                const SizedBox(height: 8),
                 ElevatedButton(
-                  onPressed: () {
-                    // acción para cancelar
+                  onPressed: () async {
+                    // Eliminar la cita
+                    final calendarioModel = Provider.of<CalendarioModel>(
+                      context,
+                      listen: false,
+                    );
+                    await calendarioModel.removeCita(cita);
+                    // Opcional: mostrar un snackbar de confirmación
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cita cancelada')),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    foregroundColor: Colors.white, // <-- color del texto
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -158,11 +176,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                   ),
                   child: const Text(
                     "Cancelar",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      // color: no necesario si se usa foregroundColor arriba
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

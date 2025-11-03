@@ -77,7 +77,9 @@ class _CerrarsesionPageState extends State<CerrarsesionPage> {
                   ),
                 ),
       ),
-      bottomNavigationBar: const MiBottomNav(),
+      bottomNavigationBar: const MiBottomNav(
+        currentIndex: 3, // aquí el índice de Estadísticas
+      ),
     );
   }
 }

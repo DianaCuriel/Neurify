@@ -200,7 +200,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
           backgroundColor: AppTheme.primaryColor,
         ),
 
-        bottomNavigationBar: const MiBottomNav(),
+        bottomNavigationBar: const MiBottomNav(currentIndex: 0),
       ),
     );
   }
