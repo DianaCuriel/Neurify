@@ -275,7 +275,7 @@ class _CalendarCardState extends State<CalendarCard> {
                                                                   ),
                                                                   child: Center(
                                                                     child: Text(
-                                                                      cita.nombre,
+                                                                      cita.nombreCliente,
                                                                       style: const TextStyle(
                                                                         color:
                                                                             Colors.white,

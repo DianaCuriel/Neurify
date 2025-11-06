@@ -2,37 +2,56 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-class Cliente {
-  final int? id; // opcional para identificar en BD
-  final String nombre;
-  final String asunto;
-  final String numero;
+class Cita {
+  final int? idCitas;
+  final int? idCliente;
+  final int idEmpresario;
+  final String nombreCliente;
+  final String telefono;
+  final String correo;
+  final String motivo;
+  final String estado;
   final DateTime fechaHora;
 
-  Cliente({
-    this.id,
-    required this.nombre,
-    required this.asunto,
-    required this.numero,
+  Cita({
+    this.idCitas,
+    this.idCliente,
+    required this.idEmpresario,
+    required this.nombreCliente,
+    required this.telefono,
+    required this.correo,
+    required this.motivo,
+    required this.estado,
     required this.fechaHora,
   });
 
-  factory Cliente.fromJson(Map<String, dynamic> json) {
-    return Cliente(
-      id: json['id'],
-      nombre: json['nombre'],
-      asunto: json['asunto'],
-      numero: json['numero'],
+  /// 🔹 Crear objeto desde JSON (respuesta del PHP)
+  factory Cita.fromJson(Map<String, dynamic> json) {
+    return Cita(
+      idCitas: int.tryParse(json['id_citas'].toString()),
+      idCliente: int.tryParse(json['id_cliente'].toString()),
+      idEmpresario: int.tryParse(json['id_empresario'].toString()) ?? 1,
+      nombreCliente: json['nombre_cliente'] ?? '',
+      telefono: json['telefono'] ?? '',
+      correo: json['correo'] ?? '',
+      motivo: json['motivo'] ?? '',
+      estado: json['estado'] ?? '',
       fechaHora: DateTime.parse(json['fechaHora']),
     );
   }
 
-  Map<String, dynamic> toJson() {
+  /// 🔹 Convertir a JSON para enviar al PHP
+  Map<String, dynamic> toJson({required String accion}) {
     return {
-      'id': id,
-      'nombre': nombre,
-      'asunto': asunto,
-      'numero': numero,
+      'accion': accion,
+      if (idCitas != null) 'id_citas': idCitas,
+      if (idCliente != null) 'id_cliente': idCliente,
+      'id_empresario': idEmpresario,
+      'nombre_cliente': nombreCliente,
+      'telefono': telefono,
+      'correo': correo,
+      'motivo': motivo,
+      'estado': estado,
       'fechaHora': fechaHora.toIso8601String(),
     };
   }
@@ -41,21 +60,32 @@ class Cliente {
 class CalendarioModel extends ChangeNotifier {
   final String apiUrl =
       'http://servidor-morales11.sytes.net:5050/Calendario.php';
-  List<Cliente> _citas = [];
 
-  List<Cliente> get citas => List.unmodifiable(_citas);
+  List<Cita> _citas = [];
+  List<Cita> get citas => List.unmodifiable(_citas);
 
-  // Leer citas desde la base de datos
+  /* ────────────────────────────────
+   🔹 OBTENER CITAS
+  ───────────────────────────────── */
   Future<void> fetchCitas() async {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'accion': 'listar'}),
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data is List) {
-          _citas = data.map((json) => Cliente.fromJson(json)).toList();
+
+        if (data['success'] == true && data['citas'] is List) {
+          _citas =
+              (data['citas'] as List)
+                  .map((json) => Cita.fromJson(json))
+                  .toList();
           notifyListeners();
         } else {
-          print('Error: JSON recibido no es una lista: $data');
+          print('Error: respuesta inesperada $data');
         }
       } else {
         print('Error HTTP: ${response.statusCode}');
@@ -65,52 +95,73 @@ class CalendarioModel extends ChangeNotifier {
     }
   }
 
-  // Crear cita
-  Future<void> addCita(Cliente cita) async {
-    final body = {
-      'accion': 'añadir',
-      'id_cliente': 1, // Por ejemplo, asigna un valor
-      'id_empresario': 1, // Igual
-      'motivo': cita.asunto,
-      'fechaHora': cita.fechaHora.toIso8601String(),
-      'estado': 'pendiente',
-    };
+  /* ────────────────────────────────
+   🔹 AÑADIR NUEVA CITA + CLIENTE
+  ───────────────────────────────── */
+  Future<void> addCita(Cita cita) async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(cita.toJson(accion: 'añadir')),
+      );
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(body),
-    );
-
-    if (response.statusCode == 200) {
-      await fetchCitas();
-    } else {
-      print('Error al agregar cita: ${response.body}');
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        await fetchCitas();
+      } else {
+        print('Error al agregar cita: ${data['mensaje']}');
+      }
+    } catch (e) {
+      print('Error addCita: $e');
     }
   }
 
-  // Actualizar cita
-  Future<void> updateCita(Cliente cita) async {
-    final response = await http.put(
-      Uri.parse(apiUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(cita.toJson()),
-    );
-    if (response.statusCode == 200) {
-      await fetchCitas();
+  /* ────────────────────────────────
+   🔹 MODIFICAR CITA + CLIENTE
+  ───────────────────────────────── */
+  Future<void> updateCita(Cita cita) async {
+    if (cita.idCitas == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(cita.toJson(accion: 'modificar')),
+      );
+
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        await fetchCitas();
+      } else {
+        print('Error al modificar cita: ${data['mensaje']}');
+      }
+    } catch (e) {
+      print('Error updateCita: $e');
     }
   }
 
-  // Eliminar cita
-  Future<void> removeCita(Cliente cita) async {
-    if (cita.id == null) return;
-    final response = await http.delete(
-      Uri.parse(apiUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'id': cita.id}),
-    );
-    if (response.statusCode == 200) {
-      await fetchCitas();
+  /* ────────────────────────────────
+   🔹 ELIMINAR CITA + CLIENTE
+  ───────────────────────────────── */
+  Future<void> removeCita(Cita cita) async {
+    if (cita.idCitas == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'accion': 'borrar', 'id_citas': cita.idCitas}),
+      );
+
+      final data = json.decode(response.body);
+      if (data['success'] == true) {
+        await fetchCitas();
+      } else {
+        print('Error al borrar cita: ${data['mensaje']}');
+      }
+    } catch (e) {
+      print('Error removeCita: $e');
     }
   }
 }

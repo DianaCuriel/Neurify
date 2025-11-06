@@ -36,8 +36,8 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
     final citasFiltradas =
         citasHoy.where((cita) {
           final query = _searchQuery.toLowerCase();
-          return cita.nombre.toLowerCase().contains(query) ||
-              cita.asunto.toLowerCase().contains(query);
+          return cita.nombreCliente.toLowerCase().contains(query) ||
+              cita.motivo.toLowerCase().contains(query);
         }).toList();
 
     return Column(
