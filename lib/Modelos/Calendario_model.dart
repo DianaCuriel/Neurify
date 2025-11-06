@@ -25,24 +25,44 @@ class Cita {
     required this.fechaHora,
   });
 
-  /// 🔹 Crear objeto desde JSON (respuesta del PHP)
+  /*──────────────────────────────
+   🔹 Crear objeto desde JSON (PHP → Flutter)
+  ──────────────────────────────*/
   factory Cita.fromJson(Map<String, dynamic> json) {
-    return Cita(
-      idCitas: int.tryParse(json['id_citas'].toString()),
-      idCliente: int.tryParse(json['id_cliente'].toString()),
-      idEmpresario: int.tryParse(json['id_empresario'].toString()) ?? 1,
-      nombreCliente: json['nombre_cliente'] ?? '',
-      telefono: json['telefono'] ?? '',
-      correo: json['correo'] ?? '',
-      motivo: json['motivo'] ?? '',
-      estado: json['estado'] ?? '',
-      fechaHora: DateTime.parse(json['fechaHora']),
-    );
+    print(' [fromJson] Recibiendo JSON: $json');
+    try {
+      // Si PHP envía 'fecha' y 'hora' separados
+      final fecha = json['fecha'] ?? '';
+      final hora = json['hora'] ?? '00:00:00';
+      final fechaHora =
+          DateTime.tryParse('$fecha $hora') ??
+          DateTime.now(); // fallback si hay error
+
+      return Cita(
+        idCitas: int.tryParse(json['id_citas'].toString()),
+        idCliente: int.tryParse(json['id_cliente'].toString()),
+        idEmpresario: int.tryParse(json['id_empresario'].toString()) ?? 1,
+        nombreCliente: json['nombre_cliente'] ?? '',
+        telefono: json['telefono'] ?? '',
+        correo: json['correo'] ?? '',
+        motivo: json['motivo'] ?? '',
+        estado: json['estado'] ?? '',
+        fechaHora: fechaHora,
+      );
+    } catch (e) {
+      print('[fromJson] Error al parsear cita: $e');
+      rethrow;
+    }
   }
 
-  /// 🔹 Convertir a JSON para enviar al PHP
+  /*──────────────────────────────
+   🔹 Convertir a JSON (Flutter → PHP)
+  ──────────────────────────────*/
   Map<String, dynamic> toJson({required String accion}) {
-    return {
+    final fecha = fechaHora.toIso8601String().split('T')[0];
+    final hora = fechaHora.toIso8601String().split('T')[1].split('.')[0];
+
+    final jsonMap = {
       'accion': accion,
       if (idCitas != null) 'id_citas': idCitas,
       if (idCliente != null) 'id_cliente': idCliente,
@@ -52,11 +72,17 @@ class Cita {
       'correo': correo,
       'motivo': motivo,
       'estado': estado,
-      'fechaHora': fechaHora.toIso8601String(),
+      'fecha': fecha,
+      'hora': hora,
     };
+
+    print('[toJson:$accion] Datos preparados: $jsonMap');
+    return jsonMap;
   }
 
-  /// 🔹 Copiar una cita modificando solo ciertos campos
+  /*──────────────────────────────
+   🔹 Copiar cita modificando campos
+  ──────────────────────────────*/
   Cita copyWith({
     int? idCitas,
     int? idCliente,
@@ -68,6 +94,7 @@ class Cita {
     String? estado,
     DateTime? fechaHora,
   }) {
+    print('[copyWith] Creando copia modificada...');
     return Cita(
       idCitas: idCitas ?? this.idCitas,
       idCliente: idCliente ?? this.idCliente,
@@ -89,89 +116,113 @@ class CalendarioModel extends ChangeNotifier {
   List<Cita> _citas = [];
   List<Cita> get citas => List.unmodifiable(_citas);
 
-  /* ────────────────────────────────
+  /*──────────────────────────────
    🔹 OBTENER CITAS
-  ───────────────────────────────── */
+  ──────────────────────────────*/
   Future<void> fetchCitas() async {
+    print('📡 [fetchCitas] Solicitando lista de citas...');
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'accion': 'listar'}),
       );
+      print('[fetchCitas] Código HTTP: ${response.statusCode}');
+      print('[fetchCitas] Respuesta: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success'] == true && data['citas'] is List) {
           _citas =
               (data['citas'] as List)
                   .map((json) => Cita.fromJson(json))
                   .toList();
+          print(' [fetchCitas] ${_citas.length} citas cargadas.');
           notifyListeners();
         } else {
-          print('Error: respuesta inesperada $data');
+          print(' [fetchCitas] Respuesta inesperada: $data');
         }
       } else {
-        print('Error HTTP: ${response.statusCode}');
+        print(' [fetchCitas] Error HTTP: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetchCitas: $e');
+      print(' [fetchCitas] Error: $e');
     }
   }
 
-  /* ────────────────────────────────
+  /*──────────────────────────────
    🔹 AÑADIR NUEVA CITA + CLIENTE
-  ───────────────────────────────── */
+  ──────────────────────────────*/
   Future<void> addCita(Cita cita) async {
+    print(' [addCita] Enviando nueva cita...');
+    final jsonBody = cita.toJson(accion: 'añadir');
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(cita.toJson(accion: 'añadir')),
+        body: json.encode(jsonBody),
       );
+
+      print(' [addCita] Código HTTP: ${response.statusCode}');
+      print(' [addCita] Respuesta: ${response.body}');
 
       final data = json.decode(response.body);
       if (data['success'] == true) {
+        print('[addCita] Cita añadida con éxito');
         await fetchCitas();
       } else {
-        print('Error al agregar cita: ${data['mensaje']}');
+        print(' [addCita] Error: ${data['mensaje']}');
       }
     } catch (e) {
-      print('Error addCita: $e');
+      print(' [addCita] Excepción: $e');
     }
   }
 
-  /* ────────────────────────────────
+  /*──────────────────────────────
    🔹 MODIFICAR CITA + CLIENTE
-  ───────────────────────────────── */
+  ──────────────────────────────*/
   Future<void> updateCita(Cita cita) async {
-    if (cita.idCitas == null) return;
+    if (cita.idCitas == null) {
+      print(' [updateCita] idCitas es null, no se puede actualizar.');
+      return;
+    }
+
+    print(' [updateCita] Enviando cita ID: ${cita.idCitas}');
+    final jsonBody = cita.toJson(accion: 'modificar');
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(cita.toJson(accion: 'modificar')),
+        body: json.encode(jsonBody),
       );
+
+      print(' [updateCita] Código HTTP: ${response.statusCode}');
+      print(' [updateCita] Respuesta: ${response.body}');
 
       final data = json.decode(response.body);
       if (data['success'] == true) {
+        print(' [updateCita] Cita actualizada correctamente.');
         await fetchCitas();
       } else {
-        print('Error al modificar cita: ${data['mensaje']}');
+        print(' [updateCita] Error: ${data['mensaje']}');
       }
     } catch (e) {
-      print('Error updateCita: $e');
+      print(' [updateCita] Error: $e');
     }
   }
 
-  /* ────────────────────────────────
-   🔹 ELIMINAR CITA + CLIENTE
-  ───────────────────────────────── */
+  /*──────────────────────────────
+   🔹 ELIMINAR CITA
+  ──────────────────────────────*/
   Future<void> removeCita(Cita cita) async {
-    if (cita.idCitas == null) return;
+    if (cita.idCitas == null) {
+      print(' [removeCita] idCitas es null.');
+      return;
+    }
 
+    print(' [removeCita] Eliminando cita ID: ${cita.idCitas}');
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -179,14 +230,18 @@ class CalendarioModel extends ChangeNotifier {
         body: json.encode({'accion': 'borrar', 'id_citas': cita.idCitas}),
       );
 
+      print(' [removeCita] Código HTTP: ${response.statusCode}');
+      print(' [removeCita] Respuesta: ${response.body}');
+
       final data = json.decode(response.body);
       if (data['success'] == true) {
+        print(' [removeCita] Cita eliminada correctamente.');
         await fetchCitas();
       } else {
-        print('Error al borrar cita: ${data['mensaje']}');
+        print(' [removeCita] Error: ${data['mensaje']}');
       }
     } catch (e) {
-      print('Error removeCita: $e');
+      print(' [removeCita] Error: $e');
     }
   }
 }

@@ -220,9 +220,9 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
       selectedHora!.minute,
     );
 
-    // 🔹 Crear objeto Cita compatible con tu modelo actualizado
+    // Crear objeto Cita compatible con tu modelo actualizado
     final nuevaCita = Cita(
-      idEmpresario: 1, // Puedes cambiarlo si tienes login dinámico
+      idEmpresario: 2,
       nombreCliente: nombreController.text.trim(),
       telefono: telefonoController.text.trim(),
       correo: correoController.text.trim(),
