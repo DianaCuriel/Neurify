@@ -1,4 +1,3 @@
-// Calendario_agregarcita_card.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Fijo/app_theme.dart';
@@ -13,8 +12,9 @@ class AgregarCitaPage extends StatefulWidget {
 
 class _AgregarCitaPageState extends State<AgregarCitaPage> {
   final nombreController = TextEditingController();
-  final asuntoController = TextEditingController();
-  final numeroController = TextEditingController();
+  final telefonoController = TextEditingController();
+  final correoController = TextEditingController();
+  final motivoController = TextEditingController();
   final fechaController = TextEditingController();
   final horaController = TextEditingController();
 
@@ -38,59 +38,14 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 80,
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        elevation: 4,
-                      ),
-                      onPressed: _guardarCita,
-                      child: AppTheme.tituloBoton("Guardar"),
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 48,
-                    child: Text(
-                      "Nueva cita",
-                      style: AppTheme.sutittleStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _encabezado(context),
             const SizedBox(height: 20),
             AppTheme.subtitleText('Datos personales'),
             const SizedBox(height: 12),
             _campoTexto(nombreController, "Nombre del cliente"),
-            _campoTexto(asuntoController, "Asunto"),
-            _campoTexto(numeroController, "Número"),
+            _campoTexto(telefonoController, "Teléfono"),
+            _campoTexto(correoController, "Correo electrónico"),
+            _campoTexto(motivoController, "Motivo o asunto de la cita"),
             const SizedBox(height: 20),
             AppTheme.subtitleText('Datos del día'),
             const SizedBox(height: 12),
@@ -98,6 +53,56 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
             _campoHora(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _encabezado(BuildContext context) {
+    return SizedBox(
+      height: 80,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 4,
+              ),
+              onPressed: _guardarCita,
+              child: AppTheme.tituloBoton("Guardar"),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 48,
+            child: Text(
+              "Nueva cita",
+              style: AppTheme.sutittleStyle.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -131,7 +136,7 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
         controller: fechaController,
         readOnly: true,
         decoration: InputDecoration(
-          hintText: "Día",
+          hintText: "Seleccionar día",
           suffixIcon: const Icon(Icons.calendar_today),
           filled: true,
           fillColor: Colors.white,
@@ -170,7 +175,7 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
         controller: horaController,
         readOnly: true,
         decoration: InputDecoration(
-          hintText: "Hora",
+          hintText: "Seleccionar hora",
           suffixIcon: const Icon(Icons.access_time),
           filled: true,
           fillColor: Colors.white,
@@ -215,10 +220,14 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
       selectedHora!.minute,
     );
 
-    final nuevaCita = Cliente(
-      nombre: nombreController.text,
-      asunto: asuntoController.text,
-      numero: numeroController.text,
+    // 🔹 Crear objeto Cita compatible con tu modelo actualizado
+    final nuevaCita = Cita(
+      idEmpresario: 1, // Puedes cambiarlo si tienes login dinámico
+      nombreCliente: nombreController.text.trim(),
+      telefono: telefonoController.text.trim(),
+      correo: correoController.text.trim(),
+      motivo: motivoController.text.trim(),
+      estado: "Pendiente",
       fechaHora: fechaHoraFinal,
     );
 

@@ -55,6 +55,31 @@ class Cita {
       'fechaHora': fechaHora.toIso8601String(),
     };
   }
+
+  /// 🔹 Copiar una cita modificando solo ciertos campos
+  Cita copyWith({
+    int? idCitas,
+    int? idCliente,
+    int? idEmpresario,
+    String? nombreCliente,
+    String? telefono,
+    String? correo,
+    String? motivo,
+    String? estado,
+    DateTime? fechaHora,
+  }) {
+    return Cita(
+      idCitas: idCitas ?? this.idCitas,
+      idCliente: idCliente ?? this.idCliente,
+      idEmpresario: idEmpresario ?? this.idEmpresario,
+      nombreCliente: nombreCliente ?? this.nombreCliente,
+      telefono: telefono ?? this.telefono,
+      correo: correo ?? this.correo,
+      motivo: motivo ?? this.motivo,
+      estado: estado ?? this.estado,
+      fechaHora: fechaHora ?? this.fechaHora,
+    );
+  }
 }
 
 class CalendarioModel extends ChangeNotifier {
