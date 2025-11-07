@@ -26,6 +26,7 @@ class _EditarCitaPageState extends State<EditarCitaPage> {
   @override
   void initState() {
     super.initState();
+
     nombreController = TextEditingController(text: widget.cita.nombreCliente);
     telefonoController = TextEditingController(text: widget.cita.telefono);
     correoController = TextEditingController(text: widget.cita.correo);
@@ -34,12 +35,16 @@ class _EditarCitaPageState extends State<EditarCitaPage> {
       text:
           "${widget.cita.fechaHora.day}/${widget.cita.fechaHora.month}/${widget.cita.fechaHora.year}",
     );
-    horaController = TextEditingController(
-      text: TimeOfDay.fromDateTime(widget.cita.fechaHora).format(context),
-    );
 
     selectedFecha = widget.cita.fechaHora;
     selectedHora = TimeOfDay.fromDateTime(widget.cita.fechaHora);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      horaController = TextEditingController(
+        text: selectedHora!.format(context),
+      );
+      setState(() {});
+    });
   }
 
   @override

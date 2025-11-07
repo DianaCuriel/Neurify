@@ -63,7 +63,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
             ),
           ),
 
-        // 📅 Si no hay citas
+        // Si no hay citas
         if (citasHoy.isEmpty)
           Card(
             shape: RoundedRectangleBorder(
@@ -81,7 +81,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
             ),
           )
         else
-          // 📋 Lista de citas
+          // Lista de citas
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 16),
@@ -99,7 +99,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
     );
   }
 
-  // 🧩 Tarjeta individual
+  //  Tarjeta individual
   Widget _buildCard(Cita cita) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -111,7 +111,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🟢 Información de la cita
+            //  Información de la cita
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +153,10 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                       builder: (context) => EditarCitaPage(cita: cita),
                     );
                   },
-                  icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                  icon: const Icon(
+                    Icons.edit,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                  ),
                   tooltip: "Editar cita",
                 ),
                 const SizedBox(height: 8),

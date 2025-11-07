@@ -112,13 +112,13 @@ error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Em
             exit;
         }
 
-        // 1️⃣ Actualizar cliente
+        //  Actualizar cliente
         $stmt = $conn->prepare("UPDATE clientes SET nombre_cliente=?, telefono=?, correo=? WHERE id_cliente=?");
         $stmt->bind_param("sssi", $nombre, $telefono, $correo, $id_cliente);
         $stmt->execute();
         $stmt->close();
 
-        // 2️⃣ Actualizar cita
+        //  Actualizar cita
         $stmt2 = $conn->prepare("UPDATE citas SET fecha=?, hora=?, motivo=?, estado=? WHERE id_citas=?");
         $stmt2->bind_param("ssssi", $fecha, $hora, $motivo, $estado, $id_citas);
 
@@ -149,13 +149,13 @@ error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Em
         $row = $res->fetch_assoc();
         $id_cliente = $row['id_cliente'];
 
-        // 1️⃣ Eliminar cita
+        //  Eliminar cita
         $stmt = $conn->prepare("DELETE FROM citas WHERE id_citas=?");
         $stmt->bind_param("i", $id_citas);
         $stmt->execute();
         $stmt->close();
 
-        // 2️⃣ Eliminar cliente vinculado
+        //  Eliminar cliente vinculado
         $stmt2 = $conn->prepare("DELETE FROM clientes WHERE id_cliente=?");
         $stmt2->bind_param("i", $id_cliente);
 

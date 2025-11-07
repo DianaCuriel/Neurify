@@ -26,6 +26,16 @@ class _CalendarioPageState extends State<CalendarioPage> {
   bool _showLast24 = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Llamar al modelo para cargar las citas apenas se abra la página
+    Future.microtask(() {
+      final calendario = context.read<CalendarioModel>();
+      calendario.fetchCitas();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final calendario = context.watch<CalendarioModel>(); // acceso al modelo
 
