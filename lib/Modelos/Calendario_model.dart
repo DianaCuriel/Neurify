@@ -214,34 +214,35 @@ class CalendarioModel extends ChangeNotifier {
   }
 
   /*──────────────────────────────
-   🔹 ELIMINAR CITA
+   🔹 CANCELAR CITA (Actualizar estado a "Cancelada")
   ──────────────────────────────*/
-  Future<void> removeCita(Cita cita) async {
+  Future<void> cancelarCita(Cita cita) async {
     if (cita.idCitas == null) {
-      print(' [removeCita] idCitas es null.');
+      print(' [cancelarCita] idCitas es null.');
       return;
     }
 
-    print(' [removeCita] Eliminando cita ID: ${cita.idCitas}');
+    print(' [cancelarCita] Cancelando cita ID: ${cita.idCitas}');
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'accion': 'borrar', 'id_citas': cita.idCitas}),
+        // Enviamos la acción "borrar", que el PHP ahora interpreta como "cancelar"
+        body: json.encode({'accion': 'cancelar', 'id_citas': cita.idCitas}),
       );
 
-      print(' [removeCita] Código HTTP: ${response.statusCode}');
-      print(' [removeCita] Respuesta: ${response.body}');
+      print(' [cancelarCita] Código HTTP: ${response.statusCode}');
+      print(' [cancelarCita] Respuesta: ${response.body}');
 
       final data = json.decode(response.body);
       if (data['success'] == true) {
-        print(' [removeCita] Cita eliminada correctamente.');
-        await fetchCitas();
+        print(' [cancelarCita] Cita cancelada correctamente.');
+        await fetchCitas(); // Recarga la lista de citas actualizadas
       } else {
-        print(' [removeCita] Error: ${data['mensaje']}');
+        print(' [cancelarCita] Error: ${data['mensaje']}');
       }
     } catch (e) {
-      print(' [removeCita] Error: $e');
+      print(' [cancelarCita] Error: $e');
     }
   }
 }

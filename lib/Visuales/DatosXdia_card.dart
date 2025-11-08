@@ -166,7 +166,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                       context,
                       listen: false,
                     );
-                    await calendarioModel.removeCita(cita);
+                    await calendarioModel.cancelarCita(cita);
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Cita cancelada')),

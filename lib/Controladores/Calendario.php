@@ -131,47 +131,33 @@ error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Em
         $stmt2->close();
         break;
 
-    /*  ELIMINAR CITA Y SU CLIENTE */
-    case 'borrar':
-        $id_citas = $input['id_citas'] ?? 0;
+   /*  CANCELAR CITA (Actualizar estado a 'Cancelada') */
+case 'cancelar':
+    $id_citas = $input['id_citas'] ?? 0;
 
-        if ($id_citas == 0) {
-            echo json_encode(['success' => false, 'mensaje' => 'ID no válido']);
-            exit;
-        }
+    if ($id_citas == 0) {
+        echo json_encode(['success' => false, 'mensaje' => 'ID no válido']);
+        exit;
+    }
 
-        // Buscar cliente asociado
-        $res = $conn->query("SELECT id_cliente FROM citas WHERE id_citas = $id_citas");
-        if ($res->num_rows == 0) {
-            echo json_encode(['success' => false, 'mensaje' => 'Cita no encontrada']);
-            exit;
-        }
-        $row = $res->fetch_assoc();
-        $id_cliente = $row['id_cliente'];
+    // Actualizar el estado de la cita a "Cancelada"
+    $stmt = $conn->prepare("UPDATE citas SET estado = 'Cancelada' WHERE id_citas = ?");
+    if (!$stmt) {
+        echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación de la consulta: ' . $conn->error]);
+        exit;
+    }
 
-        //  Eliminar cita
-        $stmt = $conn->prepare("DELETE FROM citas WHERE id_citas=?");
-        $stmt->bind_param("i", $id_citas);
-        $stmt->execute();
-        $stmt->close();
+    $stmt->bind_param("i", $id_citas);
 
-        //  Eliminar cliente vinculado
-        $stmt2 = $conn->prepare("DELETE FROM clientes WHERE id_cliente=?");
-        $stmt2->bind_param("i", $id_cliente);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'mensaje' => 'Cita cancelada correctamente']);
+    } else {
+        echo json_encode(['success' => false, 'mensaje' => 'Error al cancelar cita: ' . $stmt->error]);
+    }
 
-        if ($stmt2->execute()) {
-            echo json_encode(['success' => true, 'mensaje' => 'Cita y cliente eliminados']);
-        } else {
-            echo json_encode(['success' => false, 'mensaje' => 'Error al eliminar cliente']);
-        }
+    $stmt->close();
+    break;
 
-        $stmt2->close();
-        break;
-
-    /* ACCIÓN NO VÁLIDA */
-    default:
-        echo json_encode(['success' => false, 'mensaje' => 'Acción no válida']);
-        break;
 }
 
 $conn->close();
