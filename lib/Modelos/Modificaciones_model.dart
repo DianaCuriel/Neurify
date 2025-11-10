@@ -1,140 +1,235 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-/// Tipos de bloqueo en el calendario
-enum TipoModificacion {
-  unica, // Solo un día específico
-  rangoDiario, // Se repite diario dentro de un rango de fechas
-  semanal, // Repetición semanal (ej: todos los lunes)
-}
+const String apiUrl =
+    "http://servidor-morales1.sytes.net:5050/Modificaciones.php";
 
-/// Clase que representa un bloqueo/modificación en el calendario
+enum TipoModificacion { unica, rangoDiario, semanal }
+
 class Modificacion {
+  final int idBloqueo;
   final String titulo;
-
-  /// Fecha de inicio y fin (para rangos o un único día)
-  final DateTime fechaInicio;
-  final DateTime fechaFin;
-
-  /// Hora de inicio y fin del bloqueo
-  final TimeOfDay horaInicio;
-  final TimeOfDay horaFin;
-
-  /// Tipo de modificación
   final TipoModificacion tipo;
-
-  /// Si es semanal, indica qué días de la semana aplica (0 = Lunes, 6 = Domingo)
-  final List<int>? diasSemana;
+  final String? diaSemana;
+  final DateTime? fechaUnica;
+  final DateTime? fechaInicio;
+  final DateTime? fechaFinal;
+  final DateTime? horaInicio;
+  final DateTime? horaFin;
 
   Modificacion({
+    required this.idBloqueo,
     required this.titulo,
-    required this.fechaInicio,
-    required this.fechaFin,
-    required this.horaInicio,
-    required this.horaFin,
     required this.tipo,
-    this.diasSemana,
+    this.diaSemana,
+    this.fechaUnica,
+    this.fechaInicio,
+    this.fechaFinal,
+    this.horaInicio,
+    this.horaFin,
   });
+
+  factory Modificacion.fromJson(Map<String, dynamic> json) {
+    debugPrint("----> [fromJson] Recibiendo JSON: $json");
+
+    TipoModificacion tipo;
+    switch (json['tipo_bloqueo']) {
+      case 'Única':
+        tipo = TipoModificacion.unica;
+        break;
+      case 'Semanal':
+        tipo = TipoModificacion.semanal;
+        break;
+      default:
+        tipo = TipoModificacion.rangoDiario;
+    }
+
+    final mod = Modificacion(
+      idBloqueo: int.tryParse(json['id_bloqueo'].toString()) ?? 0,
+      titulo: json['titulo_bloqueo'] ?? '',
+      tipo: tipo,
+      diaSemana: json['dia_semana'],
+      fechaUnica: _parseDateTime(json['fecha_unica'], json['hora_inicio']),
+      fechaInicio: _parseDateTime(json['fecha_inicio'], json['hora_inicio']),
+      fechaFinal: _parseDateTime(json['fecha_final'], json['hora_fin']),
+      horaInicio: _parseDateTime(null, json['hora_inicio']),
+      horaFin: _parseDateTime(null, json['hora_fin']),
+    );
+
+    debugPrint("----> [fromJson] Objeto creado: ${mod.toJson()}");
+    return mod;
+  }
+
+  Map<String, dynamic> toJson() {
+    debugPrint("----> [toJson] Convirtiendo objeto a JSON");
+
+    String? fechaUnicaStr = _getFecha(fechaUnica);
+    String? horaUnicaStr = _getHora(fechaUnica);
+    String? fechaInicioStr = _getFecha(fechaInicio);
+    String? horaInicioStr = _getHora(horaInicio);
+    String? fechaFinalStr = _getFecha(fechaFinal);
+    String? horaFinalStr = _getHora(horaFin);
+
+    final data = {
+      'id_bloqueo': idBloqueo,
+      'titulo_bloqueo': titulo,
+      'tipo_bloqueo': _tipoToString(tipo),
+      'dia_semana': diaSemana,
+      'fecha_unica': fechaUnicaStr,
+      'fecha_inicio': fechaInicioStr,
+      'fecha_final': fechaFinalStr,
+      'hora_inicio': horaInicioStr,
+      'hora_fin': horaFinalStr,
+    };
+
+    debugPrint("----> [toJson] Resultado: $data");
+    return data;
+  }
+
+  static String _tipoToString(TipoModificacion tipo) {
+    switch (tipo) {
+      case TipoModificacion.unica:
+        return 'Única';
+      case TipoModificacion.semanal:
+        return 'Semanal';
+      case TipoModificacion.rangoDiario:
+        return 'Diario';
+    }
+  }
+
+  static DateTime? _parseDateTime(dynamic fecha, dynamic hora) {
+    debugPrint("----> [_parseDateTime] fecha=$fecha, hora=$hora");
+    if ((fecha == null || fecha.toString().isEmpty) &&
+        (hora == null || hora.toString().isEmpty)) {
+      debugPrint("----> [_parseDateTime] Ambos valores nulos");
+      return null;
+    }
+
+    final f =
+        fecha != null && fecha.toString().isNotEmpty
+            ? fecha.toString()
+            : DateTime.now().toIso8601String().split('T')[0];
+
+    final h =
+        hora != null && hora.toString().isNotEmpty
+            ? hora.toString()
+            : "00:00:00";
+
+    final dt = DateTime.tryParse("$f $h");
+    debugPrint("----> [_parseDateTime] Resultado: $dt");
+    return dt;
+  }
+
+  static String? _getFecha(DateTime? dt) =>
+      dt == null ? null : dt.toIso8601String().split('T')[0];
+
+  static String? _getHora(DateTime? dt) =>
+      dt == null ? null : dt.toIso8601String().split('T')[1].split('.')[0];
 }
 
 class ModificacionesModel extends ChangeNotifier {
   final List<Modificacion> _modificaciones = [];
 
-  ModificacionesModel() {
-    // 🔹 Ejemplos iniciales para probar
-    _modificaciones.addAll([
-      // 🟡 ÚNICA: 29 sep 2025 de 1 a 3 PM
-      Modificacion(
-        titulo: "Pagar servicio",
-        fechaInicio: DateTime(2025, 9, 29),
-        fechaFin: DateTime(2025, 9, 29),
-        horaInicio: const TimeOfDay(hour: 13, minute: 0),
-        horaFin: const TimeOfDay(hour: 15, minute: 0),
-        tipo: TipoModificacion.unica,
-      ),
-      // 🔵 SEMANAL: Todos los lunes de 17:00 a 18:00
-      Modificacion(
-        titulo: "Recoger a la niña",
-        fechaInicio: DateTime(2025, 1, 1),
-        fechaFin: DateTime(2025, 12, 31),
-        horaInicio: const TimeOfDay(hour: 17, minute: 0),
-        horaFin: const TimeOfDay(hour: 18, minute: 0),
-        tipo: TipoModificacion.semanal,
-        diasSemana: [0], // Lunes
-      ),
-      // 🟤 RANGO DIARIO: del 5 al 20 de enero de 14:00 a 15:00
-      Modificacion(
-        titulo: "Comida",
-        fechaInicio: DateTime(2025, 1, 5),
-        fechaFin: DateTime(2025, 1, 20),
-        horaInicio: const TimeOfDay(hour: 14, minute: 0),
-        horaFin: const TimeOfDay(hour: 15, minute: 0),
-        tipo: TipoModificacion.rangoDiario,
-      ),
-    ]);
-  }
-
   List<Modificacion> get modificaciones => List.unmodifiable(_modificaciones);
 
-  void addModificacion(Modificacion mod) {
-    _modificaciones.add(mod);
-    notifyListeners();
-  }
+  Future<void> fetchBloqueos() async {
+    debugPrint("----> [fetchBloqueos] Iniciando petición a $apiUrl");
+    try {
+      final body = jsonEncode({'accion': 'listar'});
+      debugPrint("----> [fetchBloqueos] Enviando body: $body");
 
-  void removeModificacion(Modificacion mod) {
-    _modificaciones.remove(mod);
-    notifyListeners();
-  }
+      final res = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
 
-  /// Devuelve todos los bloqueos que afectan un día específico
-  List<Modificacion> getBloqueosPorDia(DateTime dia) {
-    return _modificaciones.where((mod) {
-      switch (mod.tipo) {
-        case TipoModificacion.unica:
-          return _esMismoDia(mod.fechaInicio, dia);
+      debugPrint("----> [fetchBloqueos] Código respuesta: ${res.statusCode}");
+      debugPrint("----> [fetchBloqueos] Respuesta: ${res.body}");
 
-        case TipoModificacion.rangoDiario:
-          return dia.isAfter(
-                mod.fechaInicio.subtract(const Duration(days: 1)),
-              ) &&
-              dia.isBefore(mod.fechaFin.add(const Duration(days: 1)));
-
-        case TipoModificacion.semanal:
-          final weekdayIndex = (dia.weekday - 1); // 0=Lunes
-          return mod.diasSemana?.contains(weekdayIndex) ?? false;
+      final data = jsonDecode(res.body);
+      if (data['success'] == true && data['bloqueos'] != null) {
+        _modificaciones
+          ..clear()
+          ..addAll(
+            (data['bloqueos'] as List)
+                .map((b) => Modificacion.fromJson(b))
+                .toList(),
+          );
+        debugPrint(
+          "----> [fetchBloqueos] ${_modificaciones.length} bloqueos cargados",
+        );
+        notifyListeners();
+      } else {
+        debugPrint("----> [fetchBloqueos] Error: ${data['mensaje']}");
       }
-    }).toList();
-  }
-
-  /// Verifica si un intervalo de tiempo (ej. cita) cae dentro de algún bloqueo
-  bool estaBloqueado(DateTime fecha, TimeOfDay horaInicio, TimeOfDay horaFin) {
-    final bloqueosDelDia = getBloqueosPorDia(fecha);
-    for (final b in bloqueosDelDia) {
-      if (_intersectanHoras(horaInicio, horaFin, b.horaInicio, b.horaFin)) {
-        return true;
-      }
+    } catch (e, s) {
+      debugPrint("----> [fetchBloqueos] Excepción: $e");
+      debugPrint(s.toString());
     }
-    return false;
   }
 
-  // Helpers
-  bool _esMismoDia(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  Future<void> addBloqueo(Modificacion mod) async {
+    debugPrint("----> [addBloqueo] Iniciando envío de bloqueo nuevo");
+    try {
+      final data = {'accion': 'añadir', ...mod.toJson()};
+      final body = jsonEncode(data);
+      debugPrint("----> [addBloqueo] Body a enviar: $body");
 
-  bool _intersectanHoras(
-    TimeOfDay start1,
-    TimeOfDay end1,
-    TimeOfDay start2,
-    TimeOfDay end2,
-  ) {
-    final start1Min = start1.hour * 60 + start1.minute;
-    final end1Min = end1.hour * 60 + end1.minute;
-    final start2Min = start2.hour * 60 + start2.minute;
-    final end2Min = end2.hour * 60 + end2.minute;
+      final res = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
 
-    return start1Min < end2Min && end1Min > start2Min;
+      debugPrint("----> [addBloqueo] Código respuesta: ${res.statusCode}");
+      debugPrint("----> [addBloqueo] Respuesta: ${res.body}");
+
+      final resp = jsonDecode(res.body);
+      if (resp['success'] == true) {
+        debugPrint("----> [addBloqueo] Añadido correctamente. Recargando...");
+        await fetchBloqueos();
+      } else {
+        debugPrint("----> [addBloqueo] Error: ${resp['mensaje']}");
+      }
+    } catch (e, s) {
+      debugPrint("----> [addBloqueo] Excepción: $e");
+      debugPrint(s.toString());
+    }
+  }
+
+  Future<void> removeBloqueo(int idBloqueo) async {
+    debugPrint("----> [removeBloqueo] Eliminando id=$idBloqueo");
+    try {
+      final body = jsonEncode({'accion': 'eliminar', 'id_bloqueo': idBloqueo});
+      debugPrint("----> [removeBloqueo] Body: $body");
+
+      final res = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      debugPrint("----> [removeBloqueo] Código respuesta: ${res.statusCode}");
+      debugPrint("----> [removeBloqueo] Respuesta: ${res.body}");
+
+      final data = jsonDecode(res.body);
+      if (data['success'] == true) {
+        _modificaciones.removeWhere((m) => m.idBloqueo == idBloqueo);
+        debugPrint("----> [removeBloqueo] Eliminado correctamente");
+        notifyListeners();
+      } else {
+        debugPrint("----> [removeBloqueo] Error: ${data['mensaje']}");
+      }
+    } catch (e, s) {
+      debugPrint("----> [removeBloqueo] Excepción: $e");
+      debugPrint(s.toString());
+    }
   }
 
   void clear() {
+    debugPrint("----> [clear] Limpiando lista local");
     _modificaciones.clear();
     notifyListeners();
   }
