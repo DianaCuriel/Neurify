@@ -113,6 +113,7 @@ class ModificacionesModel extends ChangeNotifier {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   /// Verifica si un intervalo de tiempo (ej. cita) cae dentro de algún bloqueo
   bool estaBloqueado(DateTime fecha, TimeOfDay horaInicio, TimeOfDay horaFin) {
     final bloqueosDelDia = getBloqueosPorDia(fecha);
@@ -142,6 +143,8 @@ class ModificacionesModel extends ChangeNotifier {
     return start1Min < end2Min && end1Min > start2Min;
   }
 
+=======
+>>>>>>> parent of 5a2e870 (mal)
 =======
 >>>>>>> parent of 5a2e870 (mal)
   void clear() {

@@ -6,6 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:neurify/modelos/estadisticas_modelo.dart';
 import '../Modelos/Calendario_model.dart';
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+import '../Modelos/Modificaciones_model.dart';
+>>>>>>> parent of 5a2e870 (mal)
 =======
 import '../Modelos/Modificaciones_model.dart';
 >>>>>>> parent of 5a2e870 (mal)

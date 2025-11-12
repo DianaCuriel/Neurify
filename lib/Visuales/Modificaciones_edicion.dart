@@ -56,14 +56,20 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   Future<void> _pickFechaInicio() async {
 =======
+=======
+>>>>>>> parent of 5a2e870 (mal)
   // ====== Funciones para seleccionar fecha y hora ======
 
   Future<DateTime?> _pickDateTime(
     BuildContext context,
     DateTime? initial,
   ) async {
+<<<<<<< HEAD
+>>>>>>> parent of 5a2e870 (mal)
+=======
 >>>>>>> parent of 5a2e870 (mal)
     final date = await showDatePicker(
       context: context,
@@ -71,6 +77,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
+<<<<<<< HEAD
 <<<<<<< HEAD
     if (date != null) setState(() => _fechaInicio = date);
   }
@@ -141,6 +148,22 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     if (dt == null) return 'Seleccionar...';
     return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
 >>>>>>> parent of 5a2e870 (mal)
+=======
+    if (date == null) return initial;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
+    );
+    if (time == null) return DateTime(date.year, date.month, date.day);
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  String _formatDateTime(DateTime? dt) {
+    if (dt == null) return 'Seleccionar...';
+    return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+>>>>>>> parent of 5a2e870 (mal)
   }
 
   @override
@@ -168,6 +191,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+<<<<<<< HEAD
 <<<<<<< HEAD
             // Encabezado
             SizedBox(
@@ -258,6 +282,56 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
                   if (val != null) setState(() => _tipo = val);
                 },
               ),
+=======
+            // ===== Encabezado =====
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                Text(
+                  "Editar bloqueo",
+                  style: AppTheme.sutittleStyle.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () {
+                    final updated = Modificacion(
+                      idBloqueo: widget.mod.idBloqueo,
+                      titulo: _tituloController.text,
+                      tipo: _tipo,
+                      diaSemana:
+                          _tipo == TipoModificacion.semanal ? _diaSemana : null,
+                      fechaUnica:
+                          _tipo == TipoModificacion.unica ? _fechaUnica : null,
+                      fechaInicio:
+                          _tipo == TipoModificacion.rangoDiario
+                              ? _fechaInicio
+                              : null,
+                      fechaFinal:
+                          _tipo == TipoModificacion.rangoDiario
+                              ? _fechaFinal
+                              : null,
+                      horaInicio: _horaInicio,
+                      horaFin: _horaFin,
+                    );
+                    modelo.addBloqueo(updated);
+                    Navigator.pop(context);
+                  },
+                  child: Text("Guardar", style: AppTheme.TituloBoton),
+                ),
+              ],
+>>>>>>> parent of 5a2e870 (mal)
             ),
 
             // Fechas y horas
@@ -382,6 +456,9 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
               _horaFin,
               (val) => setState(() => _horaFin = val),
             ),
+<<<<<<< HEAD
+>>>>>>> parent of 5a2e870 (mal)
+=======
 >>>>>>> parent of 5a2e870 (mal)
           ],
         ),
@@ -390,7 +467,11 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   // ==== Widgets reutilizables ====
+=======
+  // ====== Widgets auxiliares ======
+>>>>>>> parent of 5a2e870 (mal)
 =======
   // ====== Widgets auxiliares ======
 >>>>>>> parent of 5a2e870 (mal)
@@ -400,11 +481,15 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     filled: true,
     fillColor: Colors.white,
 <<<<<<< HEAD
+<<<<<<< HEAD
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide.none,
     ),
+=======
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+>>>>>>> parent of 5a2e870 (mal)
 =======
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
 >>>>>>> parent of 5a2e870 (mal)
@@ -421,6 +506,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   Widget _campoFecha(String label, DateTime fecha, Function() onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -432,6 +518,8 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         ),
         onTap: onTap,
 =======
+=======
+>>>>>>> parent of 5a2e870 (mal)
   Widget _campoFechaHora(
     String label,
     DateTime? valor,
@@ -448,6 +536,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
           decoration: _decoracionCampo(label),
           child: Text(_formatDateTime(valor)),
         ),
+<<<<<<< HEAD
 >>>>>>> parent of 5a2e870 (mal)
       ),
     );
@@ -464,6 +553,8 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
           hintText: hora.format(context),
         ),
         onTap: onTap,
+=======
+>>>>>>> parent of 5a2e870 (mal)
       ),
 =======
   Widget _campoDiaSemana() {
@@ -482,6 +573,9 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
       items:
           dias.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
       onChanged: (val) => setState(() => _diaSemana = val),
+<<<<<<< HEAD
+>>>>>>> parent of 5a2e870 (mal)
+=======
 >>>>>>> parent of 5a2e870 (mal)
     );
   }
