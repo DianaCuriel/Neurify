@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../Fijo/app_theme.dart';
 import 'Calendario.dart';
 import 'forgot_password_screen.dart';
+import '../Modelos/Calendario_model.dart';
+import '../Modelos/Modificaciones_model.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,20 +47,18 @@ class _LoginScreenState extends State<LoginScreen> {
       print('Respuesta: ${response.body}');
 
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
-        // Guardar datos en SharedPreferences si quieres
         final prefs = await SharedPreferences.getInstance();
         prefs.setString('usuario', _usernameController.text.trim());
 
-        // Redirigir a Calendario
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const CalendarioPage()),
-        );
+        Future.microtask(() {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const CalendarioPage()),
+          );
+        });
       } else {
-        // Mostrar error al usuario
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

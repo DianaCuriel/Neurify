@@ -14,86 +14,86 @@ $accion = $input['accion'] ?? '';
 switch ($accion) {
 
     /* LISTAR CITAS CON DATOS DE CLIENTE */
-   case 'listar':
-    $sql = "SELECT c.id_citas, c.id_cliente, cl.nombre_cliente, cl.telefono, cl.correo,
+    case 'listar':
+        $sql = "SELECT c.id_citas, c.id_cliente, cl.nombre_cliente, cl.telefono, cl.correo,
                    c.id_empresario, c.fecha, c.hora, c.motivo, c.estado
             FROM citas c
             INNER JOIN clientes cl ON c.id_cliente = cl.id_cliente";
 
-    $result = $conn->query($sql);
+        $result = $conn->query($sql);
 
-    $citas = []; 
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $citas[] = [
-                'id_citas' => (int)$row['id_citas'],
-                'id_cliente' => (int)$row['id_cliente'],
-                'id_empresario' => (int)$row['id_empresario'],
-                'nombre_cliente' => (string)$row['nombre_cliente'],
-                'telefono' => (string)$row['telefono'],
-                'correo' => (string)$row['correo'],
-                'motivo' => (string)$row['motivo'],
-                'estado' => (string)$row['estado'],
-                'fecha' => (string)$row['fecha'],
-                'hora' => (string)$row['hora'],
-            ];
+        $citas = [];
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $citas[] = [
+                    'id_citas' => (int) $row['id_citas'],
+                    'id_cliente' => (int) $row['id_cliente'],
+                    'id_empresario' => (int) $row['id_empresario'],
+                    'nombre_cliente' => (string) $row['nombre_cliente'],
+                    'telefono' => (string) $row['telefono'],
+                    'correo' => (string) $row['correo'],
+                    'motivo' => (string) $row['motivo'],
+                    'estado' => (string) $row['estado'],
+                    'fecha' => (string) $row['fecha'],
+                    'hora' => (string) $row['hora'],
+                ];
+            }
         }
-    }
 
-    // si no hay resultados, devolver lista vacía
-    echo json_encode(['success' => true, 'citas' => $citas]);
-    break;
+        // si no hay resultados, devolver lista vacía
+        echo json_encode(['success' => true, 'citas' => $citas]);
+        break;
 
 
     /* AÑADIR NUEVO CLIENTE + CITA */
-  case 'añadir':
-    $nombre = $input['nombre_cliente'] ?? '';
-    $telefono = $input['telefono'] ?? '';
-    $correo = $input['correo'] ?? '';
-    $motivo = $input['motivo'] ?? '';
-    $estado = $input['estado'] ?? 'Pendiente';
-    $fecha = $input['fecha'] ?? '';
-    $hora = $input['hora'] ?? '';
-    $id_empresario = $input['id_empresario'] ?? 2; // fijo por ahora
+    case 'añadir':
+        $nombre = $input['nombre_cliente'] ?? '';
+        $telefono = $input['telefono'] ?? '';
+        $correo = $input['correo'] ?? '';
+        $motivo = $input['motivo'] ?? '';
+        $estado = $input['estado'] ?? 'Pendiente';
+        $fecha = $input['fecha'] ?? '';
+        $hora = $input['hora'] ?? '';
+        $id_empresario = $input['id_empresario'] ?? 2; // fijo por ahora
 
-    // Validar campos
-    if ($nombre == '' || $motivo == '' || $fecha == '' || $hora == '') {
-        echo json_encode(['success' => false, 'mensaje' => 'Faltan campos obligatorios']);
-        exit;
-    }
+        // Validar campos
+        if ($nombre == '' || $motivo == '' || $fecha == '' || $hora == '') {
+            echo json_encode(['success' => false, 'mensaje' => 'Faltan campos obligatorios']);
+            exit;
+        }
 
-    // Insertar cliente
-    $stmt = $conn->prepare("INSERT INTO clientes (nombre_cliente, telefono, correo) VALUES (?, ?, ?)");
-    if (!$stmt) {
-        echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación del cliente: ' . $conn->error]);
-        exit;
-    }
-    $stmt->bind_param("sss", $nombre, $telefono, $correo);
-    $stmt->execute();
-    $id_cliente = $conn->insert_id;
-    $stmt->close();
+        // Insertar cliente
+        $stmt = $conn->prepare("INSERT INTO clientes (nombre_cliente, telefono, correo) VALUES (?, ?, ?)");
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación del cliente: ' . $conn->error]);
+            exit;
+        }
+        $stmt->bind_param("sss", $nombre, $telefono, $correo);
+        $stmt->execute();
+        $id_cliente = $conn->insert_id;
+        $stmt->close();
 
-    error_log(" Datos recibidos en añadir: " . json_encode($input));
-error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Empresario: $id_empresario");
+        error_log(" Datos recibidos en añadir: " . json_encode($input));
+        error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Empresario: $id_empresario");
 
 
-    // Insertar cita
-    $stmt2 = $conn->prepare("INSERT INTO citas (id_cliente, id_empresario, fecha, hora, motivo, estado)
+        // Insertar cita
+        $stmt2 = $conn->prepare("INSERT INTO citas (id_cliente, id_empresario, fecha, hora, motivo, estado)
                             VALUES (?, ?, ?, ?, ?, ?)");
-    if (!$stmt2) {
-        echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación de la cita: ' . $conn->error]);
-        exit;
-    }
-    $stmt2->bind_param("iissss", $id_cliente, $id_empresario, $fecha, $hora, $motivo, $estado);
+        if (!$stmt2) {
+            echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación de la cita: ' . $conn->error]);
+            exit;
+        }
+        $stmt2->bind_param("iissss", $id_cliente, $id_empresario, $fecha, $hora, $motivo, $estado);
 
-    if ($stmt2->execute()) {
-        echo json_encode(['success' => true, 'mensaje' => 'Cliente y cita añadidos correctamente']);
-    } else {
-        echo json_encode(['success' => false, 'mensaje' => 'Error al añadir cita: ' . $stmt2->error]);
-    }
+        if ($stmt2->execute()) {
+            echo json_encode(['success' => true, 'mensaje' => 'Cliente y cita añadidos correctamente']);
+        } else {
+            echo json_encode(['success' => false, 'mensaje' => 'Error al añadir cita: ' . $stmt2->error]);
+        }
 
-    $stmt2->close();
-    break;
+        $stmt2->close();
+        break;
 
     /*  MODIFICAR CITA Y CLIENTE */
     case 'modificar':
@@ -131,32 +131,32 @@ error_log(" Fecha: $fecha | Hora: $hora | Motivo: $motivo | Estado: $estado | Em
         $stmt2->close();
         break;
 
-   /*  CANCELAR CITA (Actualizar estado a 'Cancelada') */
-case 'cancelar':
-    $id_citas = $input['id_citas'] ?? 0;
+    /*  CANCELAR CITA (Actualizar estado a 'Cancelada') */
+    case 'cancelar':
+        $id_citas = $input['id_citas'] ?? 0;
 
-    if ($id_citas == 0) {
-        echo json_encode(['success' => false, 'mensaje' => 'ID no válido']);
-        exit;
-    }
+        if ($id_citas == 0) {
+            echo json_encode(['success' => false, 'mensaje' => 'ID no válido']);
+            exit;
+        }
 
-    // Actualizar el estado de la cita a "Cancelada"
-    $stmt = $conn->prepare("UPDATE citas SET estado = 'Cancelada' WHERE id_citas = ?");
-    if (!$stmt) {
-        echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación de la consulta: ' . $conn->error]);
-        exit;
-    }
+        // Actualizar el estado de la cita a "Cancelada"
+        $stmt = $conn->prepare("UPDATE citas SET estado = 'Cancelada' WHERE id_citas = ?");
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'mensaje' => 'Error en la preparación de la consulta: ' . $conn->error]);
+            exit;
+        }
 
-    $stmt->bind_param("i", $id_citas);
+        $stmt->bind_param("i", $id_citas);
 
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true, 'mensaje' => 'Cita cancelada correctamente']);
-    } else {
-        echo json_encode(['success' => false, 'mensaje' => 'Error al cancelar cita: ' . $stmt->error]);
-    }
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'mensaje' => 'Cita cancelada correctamente']);
+        } else {
+            echo json_encode(['success' => false, 'mensaje' => 'Error al cancelar cita: ' . $stmt->error]);
+        }
 
-    $stmt->close();
-    break;
+        $stmt->close();
+        break;
 
 }
 

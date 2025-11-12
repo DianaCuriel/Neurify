@@ -102,6 +102,63 @@ switch ($accion) {
         $stmt->close();
         break;
 
+    /* 🔄 ACTUALIZAR BLOQUEO */
+    case 'actualizar':
+        $id_bloqueo   = $input['id_bloqueo'] ?? 0;
+        $titulo       = $input['titulo_bloqueo'] ?? null;
+        $tipo         = $input['tipo_bloqueo'] ?? null;
+        $dia          = $input['dia_semana'] ?? null;
+        $fecha_unica  = $input['fecha_unica'] ?? null;
+        $fecha_inicio = $input['fecha_inicio'] ?? null;
+        $fecha_final  = $input['fecha_final'] ?? null;
+        $hora_inicio  = $input['hora_inicio'] ?? null;
+        $hora_fin     = $input['hora_fin'] ?? null;
+
+        if ($id_bloqueo == 0) {
+            echo json_encode(['success' => false, 'mensaje' => 'ID de bloqueo no válido']);
+            exit;
+        }
+
+        $stmt = $conn->prepare("
+            UPDATE bloqueos
+            SET titulo_bloqueo = ?, 
+                tipo_bloqueo = ?, 
+                dia_semana = ?, 
+                fecha_unica = ?, 
+                fecha_inicio = ?, 
+                fecha_final = ?, 
+                hora_inicio = ?, 
+                hora_fin = ?
+            WHERE id_bloqueo = ?
+        ");
+
+        if (!$stmt) {
+            echo json_encode(['success' => false, 'mensaje' => 'Error preparando UPDATE: ' . $conn->error]);
+            exit;
+        }
+
+        $stmt->bind_param(
+            "ssssssssi",
+            $titulo,
+            $tipo,
+            $dia,
+            $fecha_unica,
+            $fecha_inicio,
+            $fecha_final,
+            $hora_inicio,
+            $hora_fin,
+            $id_bloqueo
+        );
+
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'mensaje' => 'Bloqueo actualizado correctamente']);
+        } else {
+            echo json_encode(['success' => false, 'mensaje' => 'Error al actualizar: ' . $stmt->error]);
+        }
+
+        $stmt->close();
+        break;
+
     /* ELIMINAR BLOQUEO */
     case 'eliminar':
         $id_bloqueo = $input['id_bloqueo'] ?? 0;
@@ -127,6 +184,7 @@ switch ($accion) {
         echo json_encode(['success' => false, 'mensaje' => 'Acción no válida']);
         break;
 }
+
 
 $conn->close();
 ?>

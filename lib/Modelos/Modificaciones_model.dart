@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 const String apiUrl =
-    "http://servidor-morales1.sytes.net:5050/Modificaciones.php";
+    "http://servidor-morales11.sytes.net:5050/Modificaciones.php";
 
 enum TipoModificacion { unica, rangoDiario, semanal }
 
@@ -224,6 +224,39 @@ class ModificacionesModel extends ChangeNotifier {
       }
     } catch (e, s) {
       debugPrint("----> [removeBloqueo] Excepción: $e");
+      debugPrint(s.toString());
+    }
+  }
+
+  Future<void> updateBloqueo(Modificacion mod) async {
+    debugPrint(
+      "----> [updateBloqueo] Iniciando actualización id=${mod.idBloqueo}",
+    );
+    try {
+      final data = {'accion': 'actualizar', ...mod.toJson()};
+      final body = jsonEncode(data);
+      debugPrint("----> [updateBloqueo] Body a enviar: $body");
+
+      final res = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      );
+
+      debugPrint("----> [updateBloqueo] Código respuesta: ${res.statusCode}");
+      debugPrint("----> [updateBloqueo] Respuesta: ${res.body}");
+
+      final resp = jsonDecode(res.body);
+      if (resp['success'] == true) {
+        debugPrint(
+          "----> [updateBloqueo] Actualizado correctamente. Recargando...",
+        );
+        await fetchBloqueos();
+      } else {
+        debugPrint("----> [updateBloqueo] Error: ${resp['mensaje']}");
+      }
+    } catch (e, s) {
+      debugPrint("----> [updateBloqueo] Excepción: $e");
       debugPrint(s.toString());
     }
   }

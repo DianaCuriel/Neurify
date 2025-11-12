@@ -101,6 +101,8 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
 
   //  Tarjeta individual
   Widget _buildCard(Cita cita) {
+    final estaCancelada = cita.estado.toLowerCase() == "cancelada";
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -111,7 +113,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            //  Información de la cita
+            // 🧾 Información de la cita
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,62 +136,186 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                   ),
                   if (cita.telefono.isNotEmpty)
                     Text("Tel: ${cita.telefono}", style: AppTheme.bodyStyle),
-                  if (cita.estado.isNotEmpty)
-                    Text("Estado: ${cita.estado}", style: AppTheme.bodyStyle),
+                  Text(
+                    "Estado: ${cita.estado}",
+                    style: TextStyle(
+                      color: estaCancelada ? Colors.redAccent : Colors.black87,
+                      fontWeight:
+                          estaCancelada ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            // 🔧 Botones
-            Column(
-              children: [
-                IconButton(
-                  onPressed: () {
-                    // Editar cita (abre modal)
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => EditarCitaPage(cita: cita),
-                    );
-                  },
-                  icon: const Icon(
-                    Icons.edit,
-                    color: Color.fromARGB(255, 0, 0, 0),
+            // 🔧 Botones (solo si NO está cancelada)
+            if (!estaCancelada)
+              Column(
+                children: [
+                  // 🖋️ Botón Editar
+                  IconButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => EditarCitaPage(cita: cita),
+                      );
+                    },
+                    icon: const Icon(Icons.edit, color: Colors.black),
+                    tooltip: "Editar cita",
                   ),
-                  tooltip: "Editar cita",
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    final calendarioModel = Provider.of<CalendarioModel>(
-                      context,
-                      listen: false,
-                    );
-                    await calendarioModel.cancelarCita(cita);
+                  const SizedBox(height: 8),
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cita cancelada')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                  // ❌ Botón Cancelar con alerta
+                  ElevatedButton(
+                    onPressed: () async {
+                      final confirmar = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return Dialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            backgroundColor: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.orange,
+                                    size: 60,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    "¿Seguro que quieres cancelar esta cita?",
+                                    textAlign: TextAlign.center,
+                                    style: AppTheme.sutittleStyle.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    "Deberás contactar con tu cliente:",
+                                    style: AppTheme.bodyStyle,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    cita.nombreCliente.isNotEmpty
+                                        ? cita.nombreCliente
+                                        : "Sin nombre",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    cita.telefono.isNotEmpty
+                                        ? "Tel: ${cita.telefono}"
+                                        : "Teléfono no disponible",
+                                    style: const TextStyle(
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.grey[300],
+                                          foregroundColor: Colors.black87,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                        onPressed:
+                                            () => Navigator.pop(context, false),
+                                        child: const Text("No, volver"),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                        onPressed:
+                                            () => Navigator.pop(context, true),
+                                        child: const Text("Sí, cancelar"),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+
+                      if (confirmar == true) {
+                        final calendarioModel = Provider.of<CalendarioModel>(
+                          context,
+                          listen: false,
+                        );
+                        await calendarioModel.cancelarCita(cita);
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                'Cita cancelada correctamente',
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                    child: const Text(
+                      "Cancelar",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    "Cancelar",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
