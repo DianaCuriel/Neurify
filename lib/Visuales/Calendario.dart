@@ -7,8 +7,6 @@ import '../Fijo/BottomNavigator.dart';
 import 'Calendario_card.dart';
 import '../Fijo/app_theme.dart';
 import '../Modelos/Calendario_model.dart';
-import '../Modelos/Modificaciones_model.dart';
-
 import 'DatosXdia_card.dart';
 import 'Calendario_agregarcita_card.dart';
 
@@ -27,24 +25,14 @@ class _CalendarioPageState extends State<CalendarioPage> {
   bool _showSortBy = true;
   bool _showLast24 = true;
 
-  bool _inited = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_inited) {
-      _inited = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        print('🧩 Fetching providers after frame build...');
-        try {
-          context.read<CalendarioModel>().fetchCitas();
-          context.read<ModificacionesModel>().fetchBloqueos();
-          print('✅ Providers encontrados y métodos ejecutados correctamente.');
-        } catch (e) {
-          print('❌ Error al acceder a los providers: $e');
-        }
-      });
-    }
+  void initState() {
+    super.initState();
+    // Llamar al modelo para cargar las citas apenas se abra la página
+    Future.microtask(() {
+      final calendario = context.read<CalendarioModel>();
+      calendario.fetchCitas();
+    });
   }
 
   @override
@@ -81,9 +69,9 @@ class _CalendarioPageState extends State<CalendarioPage> {
                       height: calendarHeight,
                       child: CalendarCard(
                         initialDate: DateTime.now(),
-                        onDateSelected: (date) {
-                          // Si quieres que al seleccionar un día, hagas algo:
-                          print("Día seleccionado: $date");
+                        isMonthlyView: _isMonthlyView,
+                        onToggleView: () {
+                          setState(() => _isMonthlyView = !_isMonthlyView);
                         },
                       ),
                     ),
@@ -177,28 +165,15 @@ class _CalendarioPageState extends State<CalendarioPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            // builder: (_) {
-            //   // 👇 Usamos el context "de arriba"
-            //   return MultiProvider(
-            //     providers: [
-            //       ChangeNotifierProvider.value(
-            //         value: context.read<CalendarioModel>(),
-            //       ),
-            //       ChangeNotifierProvider.value(
-            //         value: context.read<ModificacionesModel>(),
-            //       ),
-            //     ],
-            //     child: const AgregarCitaPage(),
-            //   );
-            // },
-            builder: (_) => AgregarCitaPage(),
+            builder:
+                (context) =>
+                    const AgregarCitaPage(), // ya tiene acceso al provider
           );
         },
         tooltip: 'Agregar',
         child: const Icon(Icons.add, color: Colors.white),
         backgroundColor: AppTheme.primaryColor,
       ),
-
       bottomNavigationBar: const MiBottomNav(currentIndex: 0),
     );
   }

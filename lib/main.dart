@@ -1,12 +1,11 @@
 // #1.1
 import 'package:flutter/material.dart';
 import 'package:neurify/Visuales/login_screen.dart';
-import 'package:neurify/Visuales/Calendario.dart';
 import 'Fijo/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:neurify/modelos/estadisticas_modelo.dart';
-import 'package:neurify/modelos/Calendario_model.dart';
-import 'package:neurify/modelos/Modificaciones_model.dart';
+import '../Modelos/Calendario_model.dart';
+import '../Modelos/Modificaciones_model.dart';
 
 //#1.2
 void main() {

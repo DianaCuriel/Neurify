@@ -16,19 +16,11 @@ class ModificacionesPage extends StatefulWidget {
 
 class _ModificacionesPageState extends State<ModificacionesPage> {
   String filtroTipo = 'Todas';
-  late ModificacionesModel _modelo;
-
-  @override
-  void initState() {
-    super.initState();
-    _modelo = ModificacionesModel();
-    _modelo.fetchBloqueos(); // 👈 Carga los bloqueos desde el servidor
-  }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _modelo, // 👈 usa el modelo existente
+    return ChangeNotifierProvider(
+      create: (_) => ModificacionesModel(),
       child: Scaffold(
         appBar: const MiAppBar(title: "Bloqueos"),
         body: Column(
@@ -39,22 +31,26 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
               child: DropdownButtonFormField<String>(
                 value: filtroTipo,
                 decoration: InputDecoration(
+                  // labelText: "Filtrar por tipo",
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: Colors.white, // Fondo blanco
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(
+                      12,
+                    ), // bordes redondeados
+                    borderSide: BorderSide.none, // sin borde visible
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
                   ),
                 ),
+                dropdownColor: Colors.white, // color del menú desplegable
                 items: const [
                   DropdownMenuItem(value: 'Todas', child: Text('Todas')),
                   DropdownMenuItem(
                     value: 'Puntual',
-                    child: Text('Día puntual'),
+                    child: Text('Dia puntual'),
                   ),
                   DropdownMenuItem(
                     value: 'Rango diario',
@@ -62,18 +58,24 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
                   ),
                   DropdownMenuItem(value: 'Semanal', child: Text('Semanal')),
                 ],
-                onChanged: (val) => setState(() => filtroTipo = val!),
+                onChanged: (val) {
+                  setState(() {
+                    filtroTipo = val!;
+                  });
+                },
               ),
             ),
-            const SizedBox(height: 16),
 
-            // 👇 Aquí consumimos el modelo
+            const SizedBox(height: 16),
             Expanded(
               child: Consumer<ModificacionesModel>(
                 builder: (context, modelo, _) {
+                  // Filtrado según el dropdown
                   final modificacionesFiltradas =
                       modelo.modificaciones.where((mod) {
                         switch (filtroTipo) {
+                          case 'Todas':
+                            return true;
                           case 'Puntual':
                             return mod.tipo == TipoModificacion.unica;
                           case 'Rango diario':
@@ -86,14 +88,21 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
                       }).toList();
 
                   if (modificacionesFiltradas.isEmpty) {
-                    return const Center(child: Text("No hay modificaciones"));
+                    return Center(
+                      child: Text(
+                        "No hay modificaciones",
+                        style: AppTheme.sutittleStyle,
+                      ),
+                    );
                   }
 
                   return ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: modificacionesFiltradas.length,
-                    itemBuilder:
-                        (_, i) =>
-                            ModificacionesCard(mod: modificacionesFiltradas[i]),
+                    itemBuilder: (context, index) {
+                      final mod = modificacionesFiltradas[index];
+                      return ModificacionesCard(mod: mod);
+                    },
                   );
                 },
               ),
@@ -101,22 +110,22 @@ class _ModificacionesPageState extends State<ModificacionesPage> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            await showModalBottomSheet(
+          onPressed: () {
+            showModalBottomSheet(
               context: context,
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
               builder: (_) => const NuevaModificacionPage(),
             );
-
-            // 👇 Cuando se cierra el modal, recarga los bloqueos
-            _modelo.fetchBloqueos();
           },
           tooltip: 'Agregar bloqueo',
           backgroundColor: AppTheme.primaryColor,
           child: const Icon(Icons.add, color: Colors.white),
         ),
-        bottomNavigationBar: const MiBottomNav(currentIndex: 1),
+
+        bottomNavigationBar: const MiBottomNav(
+          currentIndex: 1, // aquí el índice de Estadísticas
+        ),
       ),
     );
   }
