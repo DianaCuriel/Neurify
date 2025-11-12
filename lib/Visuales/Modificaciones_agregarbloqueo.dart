@@ -41,7 +41,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Encabezado
+            // Encabezado X, Título y Guardar
             SizedBox(
               height: 80,
               child: Stack(
@@ -91,9 +91,13 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
             ),
             const SizedBox(height: 20),
 
+            // Campo Título
             _campoTexto(tituloController, "Título del bloqueo"),
+
+            // Dropdown tipo bloqueo
             _dropdownTipo(),
 
+            // Campos de fecha/hora según tipo
             if (tipoBloqueo == 'Puntual' || tipoBloqueo == 'Rango diario')
               _campoFechaInicio(),
             if (tipoBloqueo == 'Rango diario') _campoFechaFin(),
@@ -105,8 +109,6 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
       ),
     );
   }
-
-  // ----- Widgets de campos -----
 
   Widget _campoTexto(TextEditingController controller, String label) {
     return Padding(
@@ -139,6 +141,10 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
           labelText: "Tipo de bloqueo",
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -146,7 +152,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
         ),
         dropdownColor: Colors.white,
         items: const [
-          DropdownMenuItem(value: 'Puntual', child: Text('Día puntual')),
+          DropdownMenuItem(value: 'Puntual', child: Text('Dia puntual')),
           DropdownMenuItem(value: 'Rango diario', child: Text('Diario')),
           DropdownMenuItem(value: 'Semanal', child: Text('Semanal')),
         ],
@@ -155,6 +161,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
     );
   }
 
+  // Campos fecha/hora
   Widget _campoFechaInicio() =>
       _campoFecha(fechaInicioController, "Fecha inicio", (fecha) {
         setState(() {
@@ -187,6 +194,10 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
           suffixIcon: const Icon(Icons.calendar_today),
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -209,16 +220,20 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: DropdownButtonFormField<int>(
-        value: diaSeleccionado,
         decoration: InputDecoration(
           labelText: "Día de la semana",
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
         ),
+        value: diaSeleccionado,
         items: const [
           DropdownMenuItem(value: 0, child: Text('Lunes')),
           DropdownMenuItem(value: 1, child: Text('Martes')),
@@ -263,6 +278,10 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
           suffixIcon: const Icon(Icons.access_time),
           filled: true,
           fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -279,7 +298,6 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
     );
   }
 
-  // ----- GUARDAR -----
   void _guardarModificacion() {
     if (tituloController.text.isEmpty ||
         horaInicio == null ||
@@ -294,59 +312,21 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
       return;
     }
 
-    // 🔹 Combinar fecha y hora en DateTime
-    DateTime? inicioCompleto;
-    DateTime? finCompleto;
-
-    if (fechaInicio != null && horaInicio != null) {
-      inicioCompleto = DateTime(
-        fechaInicio!.year,
-        fechaInicio!.month,
-        fechaInicio!.day,
-        horaInicio!.hour,
-        horaInicio!.minute,
-      );
-    }
-
-    if ((fechaFin ?? fechaInicio) != null && horaFin != null) {
-      final f = fechaFin ?? fechaInicio!;
-      finCompleto = DateTime(
-        f.year,
-        f.month,
-        f.day,
-        horaFin!.hour,
-        horaFin!.minute,
-      );
-    }
-
-    final tipo =
-        tipoBloqueo == 'Puntual'
-            ? TipoModificacion.unica
-            : tipoBloqueo == 'Rango diario'
-            ? TipoModificacion.rangoDiario
-            : TipoModificacion.semanal;
-
     final model = Provider.of<ModificacionesModel>(context, listen: false);
-    model.addBloqueo(
+    model.addModificacion(
       Modificacion(
-        idBloqueo: 0,
         titulo: tituloController.text,
-        tipo: tipo,
-        diaSemana:
-            tipo == TipoModificacion.semanal
-                ? diaSeleccionado.toString()
-                : null,
-        fechaUnica: tipo == TipoModificacion.unica ? inicioCompleto : null,
-        fechaInicio:
-            tipo != TipoModificacion.unica
-                ? fechaInicio ?? inicioCompleto
-                : null,
-        fechaFinal:
-            tipo == TipoModificacion.rangoDiario
-                ? fechaFin ?? finCompleto
-                : null,
-        horaInicio: inicioCompleto,
-        horaFin: finCompleto,
+        fechaInicio: fechaInicio ?? DateTime.now(),
+        fechaFin: fechaFin ?? fechaInicio ?? DateTime.now(),
+        horaInicio: horaInicio!,
+        horaFin: horaFin!,
+        tipo:
+            tipoBloqueo == 'Puntual'
+                ? TipoModificacion.unica
+                : tipoBloqueo == 'Rango diario'
+                ? TipoModificacion.rangoDiario
+                : TipoModificacion.semanal,
+        diasSemana: tipoBloqueo == 'Semanal' ? [diaSeleccionado!] : null,
       ),
     );
 

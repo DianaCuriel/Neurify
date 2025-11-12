@@ -9,14 +9,12 @@ class ModificacionesCard extends StatelessWidget {
   final Modificacion mod;
   const ModificacionesCard({Key? key, required this.mod}) : super(key: key);
 
-  String _formatearFecha(DateTime? fecha) {
-    if (fecha == null) return "-";
-    return DateFormat("dd/MM/yyyy").format(fecha);
-  }
+  String _formatearFecha(DateTime fecha) =>
+      DateFormat("dd/MM/yyyy").format(fecha);
 
-  String _formatearHora(DateTime? fechaHora) {
-    if (fechaHora == null) return "-";
-    return DateFormat("HH:mm").format(fechaHora);
+  String _formatearHora(TimeOfDay hora) {
+    final dt = DateTime(0, 0, 0, hora.hour, hora.minute);
+    return DateFormat("HH:mm").format(dt);
   }
 
   String _descripcionTipo(Modificacion mod) {
@@ -26,41 +24,23 @@ class ModificacionesCard extends StatelessWidget {
       case TipoModificacion.rangoDiario:
         return "Rango diario";
       case TipoModificacion.semanal:
-        if (mod.diaSemana == null) return "Semanal";
-        const nombres = [
-          "Lunes",
-          "Martes",
-          "Miércoles",
-          "Jueves",
-          "Viernes",
-          "Sábado",
-          "Domingo",
-        ];
-        int index = _diaSemanaIndex(mod.diaSemana!);
-        return "Semanal (${nombres[index]})";
-    }
-  }
-
-  int _diaSemanaIndex(String dia) {
-    switch (dia.toLowerCase()) {
-      case 'lunes':
-        return 0;
-      case 'martes':
-        return 1;
-      case 'miércoles':
-      case 'miercoles':
-        return 2;
-      case 'jueves':
-        return 3;
-      case 'viernes':
-        return 4;
-      case 'sábado':
-      case 'sabado':
-        return 5;
-      case 'domingo':
-        return 6;
-      default:
-        return 0;
+        final dias =
+            mod.diasSemana
+                ?.map((d) {
+                  const nombres = [
+                    "Lun",
+                    "Mar",
+                    "Mié",
+                    "Jue",
+                    "Vie",
+                    "Sáb",
+                    "Dom",
+                  ];
+                  return nombres[d];
+                })
+                .join(", ") ??
+            "";
+        return "Semanal ($dias)";
     }
   }
 
@@ -83,32 +63,16 @@ class ModificacionesCard extends StatelessWidget {
                 children: [
                   Text(mod.titulo, style: AppTheme.sutittleStyle),
                   const SizedBox(height: 4),
-
-                  // Fechas
-                  if (mod.tipo == TipoModificacion.unica &&
-                      mod.fechaUnica != null)
-                    Text(
-                      "Fecha: ${_formatearFecha(mod.fechaUnica)}",
-                      style: AppTheme.bodyStyle,
-                    )
-                  else if (mod.tipo == TipoModificacion.rangoDiario)
-                    Text(
-                      "Del ${_formatearFecha(mod.fechaInicio)} al ${_formatearFecha(mod.fechaFinal)}",
-                      style: AppTheme.bodyStyle,
-                    )
-                  else if (mod.tipo == TipoModificacion.semanal)
-                    Text(
-                      "Día: ${mod.diaSemana ?? '-'}",
-                      style: AppTheme.bodyStyle,
-                    ),
-
-                  // Horario
+                  Text(
+                    mod.fechaInicio == mod.fechaFin
+                        ? "Fecha: ${_formatearFecha(mod.fechaInicio)}"
+                        : "Del ${_formatearFecha(mod.fechaInicio)} al ${_formatearFecha(mod.fechaFin)}",
+                    style: AppTheme.bodyStyle,
+                  ),
                   Text(
                     "Hora: ${_formatearHora(mod.horaInicio)} - ${_formatearHora(mod.horaFin)}",
                     style: AppTheme.bodyStyle,
                   ),
-
-                  // Tipo
                   Text(
                     "Tipo: ${_descripcionTipo(mod)}",
                     style: AppTheme.bodyStyle,
@@ -138,13 +102,14 @@ class ModificacionesCard extends StatelessWidget {
                   },
                   icon: const Icon(Icons.edit),
                 ),
+
                 ElevatedButton(
                   onPressed: () {
                     final modelo = Provider.of<ModificacionesModel>(
                       context,
                       listen: false,
                     );
-                    modelo.removeBloqueo(mod.idBloqueo);
+                    modelo.removeModificacion(mod);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
