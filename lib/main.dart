@@ -5,6 +5,10 @@ import 'Fijo/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:neurify/modelos/estadisticas_modelo.dart';
 import '../Modelos/Calendario_model.dart';
+<<<<<<< HEAD
+=======
+import '../Modelos/Modificaciones_model.dart';
+>>>>>>> parent of 5a2e870 (mal)
 
 //#1.2
 void main() {

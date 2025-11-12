@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
+<<<<<<< HEAD
 /// Tipos de bloqueo en el calendario
 enum TipoModificacion {
   unica, // Solo un día específico
   rangoDiario, // Se repite diario dentro de un rango de fechas
   semanal, // Repetición semanal (ej: todos los lunes)
 }
+=======
+const String apiUrl =
+    "http://servidor-morales1.sytes.net:5050/Modificaciones.php";
+
+enum TipoModificacion { unica, rangoDiario, semanal }
+>>>>>>> parent of 5a2e870 (mal)
 
 /// Clase que representa un bloqueo/modificación en el calendario
 class Modificacion {
@@ -105,6 +112,7 @@ class ModificacionesModel extends ChangeNotifier {
     }).toList();
   }
 
+<<<<<<< HEAD
   /// Verifica si un intervalo de tiempo (ej. cita) cae dentro de algún bloqueo
   bool estaBloqueado(DateTime fecha, TimeOfDay horaInicio, TimeOfDay horaFin) {
     final bloqueosDelDia = getBloqueosPorDia(fecha);
@@ -134,6 +142,8 @@ class ModificacionesModel extends ChangeNotifier {
     return start1Min < end2Min && end1Min > start2Min;
   }
 
+=======
+>>>>>>> parent of 5a2e870 (mal)
   void clear() {
     _modificaciones.clear();
     notifyListeners();

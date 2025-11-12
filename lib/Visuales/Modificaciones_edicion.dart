@@ -15,11 +15,20 @@ class EditarModificacionPage extends StatefulWidget {
 class _EditarModificacionPageState extends State<EditarModificacionPage> {
   late TextEditingController _tituloController;
   late TipoModificacion _tipo;
+<<<<<<< HEAD
   late DateTime _fechaInicio;
   late DateTime _fechaFin;
   late TimeOfDay _horaInicio;
   late TimeOfDay _horaFin;
   late List<int> _diasSemana;
+=======
+  late DateTime? _fechaUnica;
+  late DateTime? _fechaInicio;
+  late DateTime? _fechaFinal;
+  late DateTime? _horaInicio;
+  late DateTime? _horaFin;
+  String? _diaSemana;
+>>>>>>> parent of 5a2e870 (mal)
 
   @override
   void initState() {
@@ -27,10 +36,17 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     _tituloController = TextEditingController(text: widget.mod.titulo);
     _tipo = widget.mod.tipo;
     _fechaInicio = widget.mod.fechaInicio;
+<<<<<<< HEAD
     _fechaFin = widget.mod.fechaFin;
     _horaInicio = widget.mod.horaInicio;
     _horaFin = widget.mod.horaFin;
     _diasSemana = widget.mod.diasSemana ?? [];
+=======
+    _fechaFinal = widget.mod.fechaFinal;
+    _horaInicio = widget.mod.horaInicio;
+    _horaFin = widget.mod.horaFin;
+    _diaSemana = widget.mod.diaSemana;
+>>>>>>> parent of 5a2e870 (mal)
   }
 
   @override
@@ -39,13 +55,23 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     super.dispose();
   }
 
+<<<<<<< HEAD
   Future<void> _pickFechaInicio() async {
+=======
+  // ====== Funciones para seleccionar fecha y hora ======
+
+  Future<DateTime?> _pickDateTime(
+    BuildContext context,
+    DateTime? initial,
+  ) async {
+>>>>>>> parent of 5a2e870 (mal)
     final date = await showDatePicker(
       context: context,
       initialDate: _fechaInicio,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
+<<<<<<< HEAD
     if (date != null) setState(() => _fechaInicio = date);
   }
 
@@ -99,6 +125,22 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         );
       }),
     );
+=======
+    if (date == null) return initial;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
+    );
+    if (time == null) return DateTime(date.year, date.month, date.day);
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  String _formatDateTime(DateTime? dt) {
+    if (dt == null) return 'Seleccionar...';
+    return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+>>>>>>> parent of 5a2e870 (mal)
   }
 
   @override
@@ -126,6 +168,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+<<<<<<< HEAD
             // Encabezado
             SizedBox(
               height: 80,
@@ -234,23 +277,137 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
               _buildDiasSemanaSelector(),
             ],
             const SizedBox(height: 24),
+=======
+            // ===== Encabezado =====
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                Text(
+                  "Editar bloqueo",
+                  style: AppTheme.sutittleStyle.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () {
+                    final updated = Modificacion(
+                      idBloqueo: widget.mod.idBloqueo,
+                      titulo: _tituloController.text,
+                      tipo: _tipo,
+                      diaSemana:
+                          _tipo == TipoModificacion.semanal ? _diaSemana : null,
+                      fechaUnica:
+                          _tipo == TipoModificacion.unica ? _fechaUnica : null,
+                      fechaInicio:
+                          _tipo == TipoModificacion.rangoDiario
+                              ? _fechaInicio
+                              : null,
+                      fechaFinal:
+                          _tipo == TipoModificacion.rangoDiario
+                              ? _fechaFinal
+                              : null,
+                      horaInicio: _horaInicio,
+                      horaFin: _horaFin,
+                    );
+                    modelo.addBloqueo(updated);
+                    Navigator.pop(context);
+                  },
+                  child: Text("Guardar", style: AppTheme.TituloBoton),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            _campoTexto(_tituloController, "Título del bloqueo"),
+
+            DropdownButtonFormField<TipoModificacion>(
+              value: _tipo,
+              decoration: _decoracionCampo("Tipo de bloqueo"),
+              items:
+                  TipoModificacion.values
+                      .map(
+                        (e) => DropdownMenuItem(value: e, child: Text(e.name)),
+                      )
+                      .toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _tipo = val);
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            if (_tipo == TipoModificacion.unica)
+              _campoFechaHora(
+                "Fecha única",
+                _fechaUnica,
+                (val) => setState(() => _fechaUnica = val),
+              ),
+
+            if (_tipo == TipoModificacion.rangoDiario) ...[
+              _campoFechaHora(
+                "Fecha inicio",
+                _fechaInicio,
+                (val) => setState(() => _fechaInicio = val),
+              ),
+              _campoFechaHora(
+                "Fecha final",
+                _fechaFinal,
+                (val) => setState(() => _fechaFinal = val),
+              ),
+            ],
+
+            if (_tipo == TipoModificacion.semanal) _campoDiaSemana(),
+
+            const SizedBox(height: 16),
+
+            _campoFechaHora(
+              "Hora inicio",
+              _horaInicio,
+              (val) => setState(() => _horaInicio = val),
+            ),
+            _campoFechaHora(
+              "Hora fin",
+              _horaFin,
+              (val) => setState(() => _horaFin = val),
+            ),
+>>>>>>> parent of 5a2e870 (mal)
           ],
         ),
       ),
     );
   }
 
+<<<<<<< HEAD
   // ==== Widgets reutilizables ====
+=======
+  // ====== Widgets auxiliares ======
+>>>>>>> parent of 5a2e870 (mal)
 
   InputDecoration _decoracionCampo(String label) => InputDecoration(
     labelText: label,
     filled: true,
     fillColor: Colors.white,
+<<<<<<< HEAD
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide.none,
     ),
+=======
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+>>>>>>> parent of 5a2e870 (mal)
   );
 
   Widget _campoTexto(TextEditingController controller, String label) {
@@ -263,6 +420,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     );
   }
 
+<<<<<<< HEAD
   Widget _campoFecha(String label, DateTime fecha, Function() onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -273,10 +431,29 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
           hintText: "${fecha.day}/${fecha.month}/${fecha.year}",
         ),
         onTap: onTap,
+=======
+  Widget _campoFechaHora(
+    String label,
+    DateTime? valor,
+    Function(DateTime?) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: () async {
+          final dt = await _pickDateTime(context, valor);
+          onChanged(dt);
+        },
+        child: InputDecorator(
+          decoration: _decoracionCampo(label),
+          child: Text(_formatDateTime(valor)),
+        ),
+>>>>>>> parent of 5a2e870 (mal)
       ),
     );
   }
 
+<<<<<<< HEAD
   Widget _campoHora(String label, TimeOfDay hora, Function() onTap) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -288,6 +465,24 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         ),
         onTap: onTap,
       ),
+=======
+  Widget _campoDiaSemana() {
+    final dias = [
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ];
+    return DropdownButtonFormField<String>(
+      value: _diaSemana,
+      decoration: _decoracionCampo("Día de la semana"),
+      items:
+          dias.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+      onChanged: (val) => setState(() => _diaSemana = val),
+>>>>>>> parent of 5a2e870 (mal)
     );
   }
 }
