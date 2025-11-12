@@ -7,6 +7,8 @@ import '../Fijo/BottomNavigator.dart';
 import 'Calendario_card.dart';
 import '../Fijo/app_theme.dart';
 import '../Modelos/Calendario_model.dart';
+import '../Modelos/Modificaciones_model.dart';
+
 import 'DatosXdia_card.dart';
 import 'Calendario_agregarcita_card.dart';
 
@@ -165,9 +167,23 @@ class _CalendarioPageState extends State<CalendarioPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder:
-                (context) =>
-                    const AgregarCitaPage(), // ya tiene acceso al provider
+            // builder:
+            //     (context) =>
+            //         const AgregarCitaPage(), // ya tiene acceso al provider
+            builder: (_) {
+              // 👇 Usamos el context "de arriba"
+              return MultiProvider(
+                providers: [
+                  ChangeNotifierProvider.value(
+                    value: context.read<CalendarioModel>(),
+                  ),
+                  ChangeNotifierProvider.value(
+                    value: context.read<ModificacionesModel>(),
+                  ),
+                ],
+                child: const AgregarCitaPage(),
+              );
+            },
           );
         },
         tooltip: 'Agregar',
