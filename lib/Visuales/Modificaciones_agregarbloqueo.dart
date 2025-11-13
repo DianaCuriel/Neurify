@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// ✅ Imports corregidos (absolutos + minúsculas)
+// ✅ Imports absolutos en minúsculas
 import 'package:neurify/fijo/app_theme.dart';
 import 'package:neurify/modelos/modificaciones_model.dart';
 
@@ -23,8 +23,9 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
   DateTime? fechaFin;
   TimeOfDay? horaInicio;
   TimeOfDay? horaFin;
+
   String tipoBloqueo = 'Puntual';
-  int? diaSeleccionado;
+  String? diaSeleccionado; // <-- ahora String (Lunes, Martes, ...)
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +101,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
               _campoFechaInicio(),
             if (tipoBloqueo == 'Rango diario') _campoFechaFin(),
             if (tipoBloqueo == 'Semanal') _campoDiaSemana(),
+
             _campoHoraInicio(),
             _campoHoraFin(),
           ],
@@ -108,7 +110,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
     );
   }
 
-  // ----- Widgets de campos -----
+  // ----- Campos UI -----
 
   Widget _campoTexto(TextEditingController controller, String label) {
     return Padding(
@@ -210,7 +212,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
   Widget _campoDiaSemana() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<int>(
+      child: DropdownButtonFormField<String>(
         value: diaSeleccionado,
         decoration: InputDecoration(
           labelText: "Día de la semana",
@@ -222,13 +224,13 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
           ),
         ),
         items: const [
-          DropdownMenuItem(value: 0, child: Text('Lunes')),
-          DropdownMenuItem(value: 1, child: Text('Martes')),
-          DropdownMenuItem(value: 2, child: Text('Miércoles')),
-          DropdownMenuItem(value: 3, child: Text('Jueves')),
-          DropdownMenuItem(value: 4, child: Text('Viernes')),
-          DropdownMenuItem(value: 5, child: Text('Sábado')),
-          DropdownMenuItem(value: 6, child: Text('Domingo')),
+          DropdownMenuItem(value: 'Lunes', child: Text('Lunes')),
+          DropdownMenuItem(value: 'Martes', child: Text('Martes')),
+          DropdownMenuItem(value: 'Miércoles', child: Text('Miércoles')),
+          DropdownMenuItem(value: 'Jueves', child: Text('Jueves')),
+          DropdownMenuItem(value: 'Viernes', child: Text('Viernes')),
+          DropdownMenuItem(value: 'Sábado', child: Text('Sábado')),
+          DropdownMenuItem(value: 'Domingo', child: Text('Domingo')),
         ],
         onChanged: (val) => setState(() => diaSeleccionado = val),
       ),
@@ -296,26 +298,45 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
       return;
     }
 
-    // 🔹 Combinar fecha y hora en DateTime
+    // Armar fecha/hora:
     DateTime? inicioCompleto;
     DateTime? finCompleto;
 
-    if (fechaInicio != null && horaInicio != null) {
+    if (tipoBloqueo != 'Semanal') {
+      // Puntual o rango: combinamos con fecha elegida
+      if (fechaInicio != null && horaInicio != null) {
+        inicioCompleto = DateTime(
+          fechaInicio!.year,
+          fechaInicio!.month,
+          fechaInicio!.day,
+          horaInicio!.hour,
+          horaInicio!.minute,
+        );
+      }
+      final baseFin = (fechaFin ?? fechaInicio);
+      if (baseFin != null && horaFin != null) {
+        finCompleto = DateTime(
+          baseFin.year,
+          baseFin.month,
+          baseFin.day,
+          horaFin!.hour,
+          horaFin!.minute,
+        );
+      }
+    } else {
+      // Semanal: usamos una fecha dummy (hoy) solo para formar el HH:mm:ss
+      final hoy = DateTime.now();
       inicioCompleto = DateTime(
-        fechaInicio!.year,
-        fechaInicio!.month,
-        fechaInicio!.day,
+        hoy.year,
+        hoy.month,
+        hoy.day,
         horaInicio!.hour,
         horaInicio!.minute,
       );
-    }
-
-    if ((fechaFin ?? fechaInicio) != null && horaFin != null) {
-      final f = fechaFin ?? fechaInicio!;
       finCompleto = DateTime(
-        f.year,
-        f.month,
-        f.day,
+        hoy.year,
+        hoy.month,
+        hoy.day,
         horaFin!.hour,
         horaFin!.minute,
       );
@@ -328,30 +349,32 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
             ? TipoModificacion.rangoDiario
             : TipoModificacion.semanal;
 
-    final model = Provider.of<ModificacionesModel>(context, listen: false);
-    model.addBloqueo(
-      Modificacion(
-        idBloqueo: 0,
-        titulo: tituloController.text,
-        tipo: tipo,
-        diaSemana:
-            tipo == TipoModificacion.semanal
-                ? diaSeleccionado.toString()
-                : null,
-        fechaUnica: tipo == TipoModificacion.unica ? inicioCompleto : null,
-        fechaInicio:
-            tipo != TipoModificacion.unica
-                ? fechaInicio ?? inicioCompleto
-                : null,
-        fechaFinal:
-            tipo == TipoModificacion.rangoDiario
-                ? fechaFin ?? finCompleto
-                : null,
-        horaInicio: inicioCompleto,
-        horaFin: finCompleto,
-      ),
+    final mod = Modificacion(
+      idBloqueo: 0,
+      titulo: tituloController.text.trim(),
+      tipo: tipo,
+      diaSemana: tipo == TipoModificacion.semanal ? diaSeleccionado : null,
+      fechaUnica: tipo == TipoModificacion.unica ? inicioCompleto : null,
+      fechaInicio: tipo == TipoModificacion.rangoDiario ? fechaInicio : null,
+      fechaFinal: tipo == TipoModificacion.rangoDiario ? fechaFin : null,
+      // Ponemos siempre la hora en DateTime para que toJson() la serialice a "HH:mm:ss"
+      horaInicio: inicioCompleto,
+      horaFin: finCompleto,
     );
 
+    // Logs útiles
+    debugPrint(
+      '🟦 Guardando bloqueo: '
+      'tipo=$tipoBloqueo, '
+      'dia=${mod.diaSemana}, '
+      'fUnica=${mod.fechaUnica}, '
+      'fIni=${mod.fechaInicio}, '
+      'fFin=${mod.fechaFinal}, '
+      'hIni=${mod.horaInicio}, '
+      'hFin=${mod.horaFin}',
+    );
+
+    context.read<ModificacionesModel>().addBloqueo(mod);
     Navigator.pop(context);
   }
 }

@@ -1,12 +1,12 @@
+// lib/visuales/calendario_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
 
-// ❌ ANTES: ../Fijo/app_theme.dart  |  ../Modelos/Calendario_model.dart
-// ✅ AHORA:
 import 'package:neurify/fijo/app_theme.dart';
 import 'package:neurify/modelos/calendario_model.dart';
+import 'package:neurify/modelos/modificaciones_model.dart';
 
 typedef OnDateSelected = void Function(DateTime date);
 
@@ -37,6 +37,8 @@ class _CalendarCardState extends State<CalendarCard> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  bool _triedFetchMods = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,13 +60,133 @@ class _CalendarCardState extends State<CalendarCard> {
     return "$hour12 $period";
   }
 
+  int? _weekdayFromSpanish(String? dia) {
+    if (dia == null) return null;
+    final d = dia.trim().toLowerCase();
+    switch (d) {
+      case 'lunes':
+        return DateTime.monday;
+      case 'martes':
+        return DateTime.tuesday;
+      case 'miércoles':
+      case 'miercoles':
+        return DateTime.wednesday;
+      case 'jueves':
+        return DateTime.thursday;
+      case 'viernes':
+        return DateTime.friday;
+      case 'sábado':
+      case 'sabado':
+        return DateTime.saturday;
+      case 'domingo':
+        return DateTime.sunday;
+      default:
+        return null;
+    }
+  }
+
+  /// LÍMITE CERRADO-ABIERTO: [start, end)
+  /// Evita pintar la celda de la hora **fin**.
+  bool _hourInRange(DateTime target, DateTime? start, DateTime? end) {
+    final tM = target.hour * 60 + target.minute;
+    final sM = start == null ? null : start.hour * 60 + start.minute;
+    final eM = end == null ? null : end.hour * 60 + end.minute;
+
+    if (sM != null && tM < sM) return false;
+    if (eM != null && tM >= eM) return false; // <-- fin EXCLUSIVO
+    return true;
+  }
+
+  bool _dateInRange(DateTime day, DateTime? start, DateTime? end) {
+    DateTime onlyDate(DateTime d) => DateTime(d.year, d.month, d.day);
+    final d = onlyDate(day);
+    final s = start == null ? null : onlyDate(start);
+    final e = end == null ? null : onlyDate(end);
+    if (s != null && d.isBefore(s)) return false;
+    if (e != null && d.isAfter(e)) return false;
+    return true;
+  }
+
+  bool _sameDate(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  bool _isBlockedAt({
+    required DateTime day,
+    required int hour,
+    required Modificacion mod,
+  }) {
+    final target = DateTime(day.year, day.month, day.day, hour, 0);
+
+    switch (mod.tipo) {
+      case TipoModificacion.unica:
+        if (mod.fechaUnica == null) return false;
+        if (!_sameDate(day, mod.fechaUnica!)) return false;
+        final ok = _hourInRange(target, mod.horaInicio, mod.horaFin);
+        if (ok)
+          debugPrint(
+            '⛔ match Única ${mod.titulo} @ ${DateFormat.Hm().format(target)}',
+          );
+        return ok;
+
+      case TipoModificacion.rangoDiario:
+        if (!_dateInRange(day, mod.fechaInicio, mod.fechaFinal)) return false;
+        final ok = _hourInRange(target, mod.horaInicio, mod.horaFin);
+        if (ok)
+          debugPrint(
+            '⛔ match Diario ${mod.titulo} @ ${DateFormat.Hm().format(target)}',
+          );
+        return ok;
+
+      case TipoModificacion.semanal:
+        final w = _weekdayFromSpanish(mod.diaSemana);
+        if (w == null || day.weekday != w) return false;
+        final ok = _hourInRange(target, mod.horaInicio, mod.horaFin);
+        if (ok)
+          debugPrint(
+            '⛔ match Semanal ${mod.titulo} @ ${DateFormat.Hm().format(target)}',
+          );
+        return ok;
+    }
+  }
+
+  bool _anyBlockOnDay(DateTime day, List<Modificacion> mods) {
+    for (final m in mods) {
+      switch (m.tipo) {
+        case TipoModificacion.unica:
+          if (m.fechaUnica != null && _sameDate(day, m.fechaUnica!))
+            return true;
+          break;
+        case TipoModificacion.rangoDiario:
+          if (_dateInRange(day, m.fechaInicio, m.fechaFinal)) return true;
+          break;
+        case TipoModificacion.semanal:
+          final w = _weekdayFromSpanish(m.diaSemana);
+          if (w != null && day.weekday == w) return true;
+          break;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final modelo =
-        context.watch<CalendarioModel>(); // ← mismo tipo que el provider
-    final monday = _getMondayForPage(
-      _pageController.hasClients ? _pageController.page?.toInt() ?? 1000 : 1000,
-    );
+    final cal = context.watch<CalendarioModel>();
+    final modsModel = context.watch<ModificacionesModel>();
+    final mods = modsModel.modificaciones;
+
+    if (mods.isEmpty && !_triedFetchMods) {
+      _triedFetchMods = true;
+      debugPrint('🟡 mods vacío; fetchBloqueos()…');
+      Future.microtask(
+        () => context.read<ModificacionesModel>().fetchBloqueos(),
+      );
+    }
+
+    final currentIndex =
+        _pageController.hasClients
+            ? _pageController.page?.toInt() ?? 1000
+            : 1000;
+    final monday = _getMondayForPage(currentIndex);
     final weekDays = _getWeekDays(monday);
 
     return Card(
@@ -145,6 +267,61 @@ class _CalendarCardState extends State<CalendarCard> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        calendarBuilders: CalendarBuilders(
+                          defaultBuilder: (context, day, focusedDay) {
+                            final hasBlock = _anyBlockOnDay(day, mods);
+                            if (!hasBlock) return null;
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Text("${day.day}"),
+                                Positioned(
+                                  bottom: 4,
+                                  child: Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppTheme.primaryColor.withOpacity(
+                                        0.9,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                          todayBuilder: (context, day, focusedDay) {
+                            final hasBlock = _anyBlockOnDay(day, mods);
+                            return Container(
+                              decoration: const BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Text(
+                                    "${day.day}",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (hasBlock)
+                                    const Positioned(
+                                      bottom: 4,
+                                      child: CircleAvatar(
+                                        radius: 3,
+                                        backgroundColor: Colors.white,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       )
                       : PageView.builder(
                         controller: _pageController,
@@ -153,6 +330,7 @@ class _CalendarCardState extends State<CalendarCard> {
                         itemBuilder: (context, index) {
                           final monday = _getMondayForPage(index);
                           final weekDays = _getWeekDays(monday);
+
                           return Column(
                             children: [
                               Text(
@@ -231,11 +409,92 @@ class _CalendarCardState extends State<CalendarCard> {
                                                             })
                                                             .toList();
 
-                                                    if (citasEnHora
-                                                        .isNotEmpty) {
-                                                      return Column(
-                                                        children:
-                                                            citasEnHora.map((
+                                                    final bloqueosEnHora =
+                                                        mods
+                                                            .where(
+                                                              (m) =>
+                                                                  _isBlockedAt(
+                                                                    day: day,
+                                                                    hour: hour,
+                                                                    mod: m,
+                                                                  ),
+                                                            )
+                                                            .toList();
+
+                                                    if (bloqueosEnHora
+                                                            .isEmpty &&
+                                                        citasEnHora.isEmpty) {
+                                                      return const SizedBox(
+                                                        height: 50,
+                                                        width: 70,
+                                                      );
+                                                    }
+
+                                                    return Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 2,
+                                                            horizontal: 4,
+                                                          ),
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                            minHeight: 50,
+                                                            minWidth: 70,
+                                                          ),
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .stretch,
+                                                        children: [
+                                                          if (bloqueosEnHora
+                                                              .isNotEmpty)
+                                                            Container(
+                                                              height: 24,
+                                                              margin:
+                                                                  const EdgeInsets.only(
+                                                                    bottom: 2,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors
+                                                                    .redAccent
+                                                                    .withOpacity(
+                                                                      0.85,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      6,
+                                                                    ),
+                                                              ),
+                                                              alignment:
+                                                                  Alignment
+                                                                      .center,
+                                                              child: Text(
+                                                                bloqueosEnHora
+                                                                        .first
+                                                                        .titulo
+                                                                        .isEmpty
+                                                                    ? "Bloqueado"
+                                                                    : bloqueosEnHora
+                                                                        .first
+                                                                        .titulo,
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                                style: const TextStyle(
+                                                                  color:
+                                                                      Colors
+                                                                          .white,
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          if (citasEnHora
+                                                              .isNotEmpty)
+                                                            ...citasEnHora.map((
                                                               cita,
                                                             ) {
                                                               return GestureDetector(
@@ -246,11 +505,11 @@ class _CalendarCardState extends State<CalendarCard> {
                                                                           cita.fechaHora,
                                                                         ),
                                                                 child: Container(
-                                                                  height: 24,
+                                                                  height: 22,
                                                                   margin:
                                                                       const EdgeInsets.symmetric(
                                                                         vertical:
-                                                                            2,
+                                                                            1,
                                                                       ),
                                                                   decoration: BoxDecoration(
                                                                     color: widget
@@ -260,30 +519,32 @@ class _CalendarCardState extends State<CalendarCard> {
                                                                         ),
                                                                     borderRadius:
                                                                         BorderRadius.circular(
-                                                                          8,
+                                                                          6,
                                                                         ),
                                                                   ),
-                                                                  child: Center(
-                                                                    child: Text(
-                                                                      cita.nombreCliente,
-                                                                      style: const TextStyle(
-                                                                        color:
-                                                                            Colors.white,
-                                                                        fontSize:
-                                                                            10,
-                                                                      ),
+                                                                  alignment:
+                                                                      Alignment
+                                                                          .center,
+                                                                  child: Text(
+                                                                    cita.nombreCliente,
+                                                                    maxLines: 1,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: const TextStyle(
+                                                                      color:
+                                                                          Colors
+                                                                              .white,
+                                                                      fontSize:
+                                                                          10,
                                                                     ),
                                                                   ),
                                                                 ),
                                                               );
-                                                            }).toList(),
-                                                      );
-                                                    } else {
-                                                      return const SizedBox(
-                                                        height: 50,
-                                                        width: 70,
-                                                      );
-                                                    }
+                                                            }),
+                                                        ],
+                                                      ),
+                                                    );
                                                   },
                                                 ),
                                             ],
