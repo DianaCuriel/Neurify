@@ -1,11 +1,15 @@
+// =====================================================
+// lib/visuales/calendario_datosxdia_editar.dart (FIX COMPLETO)
+// =====================================================
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
+
+// ✅ Imports unificados (minúsculas, absolutos)
+import 'package:neurify/fijo/app_theme.dart';
+import 'package:neurify/modelos/calendario_model.dart';
 
 class EditarCitaPage extends StatefulWidget {
   final Cita cita;
-
   const EditarCitaPage({super.key, required this.cita});
 
   @override
@@ -13,12 +17,13 @@ class EditarCitaPage extends StatefulWidget {
 }
 
 class _EditarCitaPageState extends State<EditarCitaPage> {
-  late TextEditingController nombreController;
-  late TextEditingController telefonoController;
-  late TextEditingController correoController;
-  late TextEditingController motivoController;
-  late TextEditingController fechaController;
-  late TextEditingController horaController;
+  late final TextEditingController nombreController;
+  late final TextEditingController telefonoController;
+  late final TextEditingController correoController;
+  late final TextEditingController motivoController;
+  late final TextEditingController fechaController;
+  late TextEditingController
+  horaController; // ⚠️ requiere localizations para formatear
 
   DateTime? selectedFecha;
   TimeOfDay? selectedHora;
@@ -26,25 +31,40 @@ class _EditarCitaPageState extends State<EditarCitaPage> {
   @override
   void initState() {
     super.initState();
-
+    final fh = widget.cita.fechaHora;
     nombreController = TextEditingController(text: widget.cita.nombreCliente);
     telefonoController = TextEditingController(text: widget.cita.telefono);
     correoController = TextEditingController(text: widget.cita.correo);
     motivoController = TextEditingController(text: widget.cita.motivo);
     fechaController = TextEditingController(
-      text:
-          "${widget.cita.fechaHora.day}/${widget.cita.fechaHora.month}/${widget.cita.fechaHora.year}",
+      text: "${fh.day}/${fh.month}/${fh.year}",
     );
 
-    selectedFecha = widget.cita.fechaHora;
-    selectedHora = TimeOfDay.fromDateTime(widget.cita.fechaHora);
+    selectedFecha = fh;
+    selectedHora = TimeOfDay.fromDateTime(fh);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      horaController = TextEditingController(
-        text: selectedHora!.format(context),
-      );
-      setState(() {});
-    });
+    // Inicializa para evitar LateInitializationError en primer build
+    horaController = TextEditingController(text: "");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Por qué: formatear TimeOfDay requiere localizations; aquí ya están disponibles.
+    if (horaController.text.isEmpty && selectedHora != null) {
+      horaController.text = selectedHora!.format(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    nombreController.dispose();
+    telefonoController.dispose();
+    correoController.dispose();
+    motivoController.dispose();
+    fechaController.dispose();
+    horaController.dispose();
+    super.dispose();
   }
 
   @override
@@ -254,6 +274,7 @@ class _EditarCitaPageState extends State<EditarCitaPage> {
       fechaHora: fechaHoraFinal,
     );
 
+    // Por qué: asegurar que el modelo es el MISMO que en main.dart (import unificado)
     context.read<CalendarioModel>().updateCita(citaEditada);
     Navigator.pop(context);
   }

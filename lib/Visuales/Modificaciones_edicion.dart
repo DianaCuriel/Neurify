@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Modificaciones_model.dart';
+
+import 'package:neurify/fijo/app_theme.dart';
+import 'package:neurify/modelos/modificaciones_model.dart';
 
 class EditarModificacionPage extends StatefulWidget {
   final Modificacion mod;

@@ -1,22 +1,24 @@
-// Calendario_page.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/Appbar.dart';
-import '../Fijo/BottomNavigator.dart';
-import 'Calendario_card.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
-import '../Modelos/Modificaciones_model.dart';
 
-import 'DatosXdia_card.dart';
-import 'Calendario_agregarcita_card.dart';
+import '../fijo/appbar.dart';
+import '../fijo/bottomnavigator.dart';
+import '../visuales/calendario_card.dart';
+import '../fijo/app_theme.dart';
+
+// ✅ Importa SIEMPRE desde la misma carpeta y con el mismo caso.
+import 'package:neurify/modelos/calendario_model.dart';
+import 'package:neurify/modelos/modificaciones_model.dart';
+
+import '../visuales/datosxdia_card.dart';
+import '../visuales/calendario_agregarcita_card.dart';
 
 class CalendarioPage extends StatefulWidget {
   const CalendarioPage({super.key});
 
   @override
-  _CalendarioPageState createState() => _CalendarioPageState();
+  State<CalendarioPage> createState() => _CalendarioPageState();
 }
 
 class _CalendarioPageState extends State<CalendarioPage> {
@@ -30,16 +32,22 @@ class _CalendarioPageState extends State<CalendarioPage> {
   @override
   void initState() {
     super.initState();
-    // Llamar al modelo para cargar las citas apenas se abra la página
+    // Por qué: asegurar contexto disponible post-frame.
     Future.microtask(() {
-      final calendario = context.read<CalendarioModel>();
-      calendario.fetchCitas();
+      try {
+        final calendario = context.read<CalendarioModel>();
+        calendario.fetchCitas();
+      } catch (_) {}
+      try {
+        context.read<ModificacionesModel>();
+      } catch (_) {}
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final calendario = context.watch<CalendarioModel>(); // acceso al modelo
+    // Si el import es consistente, esto no rompe.
+    final calendario = context.watch<CalendarioModel>();
 
     return Scaffold(
       appBar: const MiAppBar(title: "Calendario"),
@@ -167,22 +175,11 @@ class _CalendarioPageState extends State<CalendarioPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            // builder:
-            //     (context) =>
-            //         const AgregarCitaPage(), // ya tiene acceso al provider
-            builder: (_) {
-              // 👇 Usamos el context "de arriba"
-              return MultiProvider(
-                providers: [
-                  ChangeNotifierProvider.value(
-                    value: context.read<CalendarioModel>(),
-                  ),
-                  ChangeNotifierProvider.value(
-                    value: context.read<ModificacionesModel>(),
-                  ),
-                ],
-                child: const AgregarCitaPage(),
-              );
+            builder: (context) {
+              // Por qué: validar que los providers existen en el modal.
+              context.read<CalendarioModel>();
+              context.read<ModificacionesModel>();
+              return const AgregarCitaPage();
             },
           );
         },

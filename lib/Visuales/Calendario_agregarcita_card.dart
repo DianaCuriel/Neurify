@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
+
+import 'package:neurify/fijo/app_theme.dart';
+import 'package:neurify/modelos/calendario_model.dart';
 
 class AgregarCitaPage extends StatefulWidget {
   const AgregarCitaPage({super.key});

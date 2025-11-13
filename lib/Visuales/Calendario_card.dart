@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
+
+// ❌ ANTES: ../Fijo/app_theme.dart  |  ../Modelos/Calendario_model.dart
+// ✅ AHORA:
+import 'package:neurify/fijo/app_theme.dart';
+import 'package:neurify/modelos/calendario_model.dart';
 
 typedef OnDateSelected = void Function(DateTime date);
 
@@ -15,13 +18,13 @@ class CalendarCard extends StatefulWidget {
   final VoidCallback onToggleView;
 
   const CalendarCard({
-    Key? key,
+    super.key,
     this.initialDate,
     this.onDateSelected,
     this.primaryColor = AppTheme.primaryColor,
     required this.isMonthlyView,
     required this.onToggleView,
-  }) : super(key: key);
+  });
 
   @override
   State<CalendarCard> createState() => _CalendarCardState();
@@ -31,8 +34,6 @@ class _CalendarCardState extends State<CalendarCard> {
   late DateTime _baseMonday;
   final List<int> _hours = List.generate(24, (i) => i);
   final PageController _pageController = PageController(initialPage: 1000);
-
-  // Para calendario mensual
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -48,9 +49,8 @@ class _CalendarCardState extends State<CalendarCard> {
     return _baseMonday.add(Duration(days: diff * 7));
   }
 
-  List<DateTime> _getWeekDays(DateTime monday) {
-    return List.generate(7, (i) => monday.add(Duration(days: i)));
-  }
+  List<DateTime> _getWeekDays(DateTime monday) =>
+      List.generate(7, (i) => monday.add(Duration(days: i)));
 
   String _formatHour(int hour24) {
     final period = hour24 >= 12 ? "PM" : "AM";
@@ -60,7 +60,8 @@ class _CalendarCardState extends State<CalendarCard> {
 
   @override
   Widget build(BuildContext context) {
-    final modelo = context.watch<CalendarioModel>();
+    final modelo =
+        context.watch<CalendarioModel>(); // ← mismo tipo que el provider
     final monday = _getMondayForPage(
       _pageController.hasClients ? _pageController.page?.toInt() ?? 1000 : 1000,
     );
@@ -75,7 +76,6 @@ class _CalendarCardState extends State<CalendarCard> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Subtítulo toggle
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -83,13 +83,12 @@ class _CalendarCardState extends State<CalendarCard> {
                   onTap: widget.onToggleView,
                   child: Text(
                     widget.isMonthlyView ? "Vista mensual" : "Vista semanal",
-                    style: AppTheme.sutittleStyle.copyWith(),
+                    style: AppTheme.sutittleStyle,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // Encabezado fechas de la semana
             if (!widget.isMonthlyView)
               Column(
                 children: [
@@ -103,7 +102,6 @@ class _CalendarCardState extends State<CalendarCard> {
                 ],
               ),
             const SizedBox(height: 16),
-            // Contenido
             Expanded(
               child:
                   widget.isMonthlyView
@@ -150,13 +148,11 @@ class _CalendarCardState extends State<CalendarCard> {
                       )
                       : PageView.builder(
                         controller: _pageController,
-                        scrollDirection:
-                            Axis.horizontal, // 👈 se asegura scroll lateral
+                        scrollDirection: Axis.horizontal,
                         onPageChanged: (_) => setState(() {}),
                         itemBuilder: (context, index) {
                           final monday = _getMondayForPage(index);
                           final weekDays = _getWeekDays(monday);
-
                           return Column(
                             children: [
                               Text(
@@ -178,7 +174,6 @@ class _CalendarCardState extends State<CalendarCard> {
                                       defaultColumnWidth:
                                           const IntrinsicColumnWidth(),
                                       children: [
-                                        // Fila de encabezados
                                         TableRow(
                                           children: [
                                             const SizedBox(),
@@ -199,7 +194,6 @@ class _CalendarCardState extends State<CalendarCard> {
                                               ),
                                           ],
                                         ),
-                                        // Filas de horas
                                         for (var hour in _hours)
                                           TableRow(
                                             children: [
@@ -217,28 +211,25 @@ class _CalendarCardState extends State<CalendarCard> {
                                               for (var day in weekDays)
                                                 Builder(
                                                   builder: (context) {
-                                                    // Buscar todas las citas en ese día y hora (independientemente de los minutos)
                                                     final citasEnHora =
-                                                        context.read<CalendarioModel>().citas.where((
-                                                          cita,
-                                                        ) {
-                                                          return cita
-                                                                      .fechaHora
-                                                                      .year ==
-                                                                  day.year &&
-                                                              cita
-                                                                      .fechaHora
-                                                                      .month ==
-                                                                  day.month &&
-                                                              cita
-                                                                      .fechaHora
-                                                                      .day ==
-                                                                  day.day &&
-                                                              cita
-                                                                      .fechaHora
-                                                                      .hour ==
-                                                                  hour;
-                                                        }).toList();
+                                                        context
+                                                            .read<
+                                                              CalendarioModel
+                                                            >()
+                                                            .citas
+                                                            .where((cita) {
+                                                              final f =
+                                                                  cita.fechaHora;
+                                                              return f.year ==
+                                                                      day.year &&
+                                                                  f.month ==
+                                                                      day.month &&
+                                                                  f.day ==
+                                                                      day.day &&
+                                                                  f.hour ==
+                                                                      hour;
+                                                            })
+                                                            .toList();
 
                                                     if (citasEnHora
                                                         .isNotEmpty) {
@@ -255,8 +246,7 @@ class _CalendarCardState extends State<CalendarCard> {
                                                                           cita.fechaHora,
                                                                         ),
                                                                 child: Container(
-                                                                  height:
-                                                                      24, // ajustar altura según cuántas citas quieras mostrar
+                                                                  height: 24,
                                                                   margin:
                                                                       const EdgeInsets.symmetric(
                                                                         vertical:

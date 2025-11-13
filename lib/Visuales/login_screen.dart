@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../Fijo/app_theme.dart';
-import 'Calendario.dart';
-import 'forgot_password_screen.dart';
+
+import '../fijo/app_theme.dart';
+import '../visuales/calendario.dart';
+import '../visuales/forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return; // validar formulario
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -33,6 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
       'contraseña': _passwordController.text.trim(),
     });
 
+    // ignore: avoid_print
+    print("🔹 Enviando login: $body");
+
     try {
       final response = await http.post(
         url,
@@ -40,24 +44,23 @@ class _LoginScreenState extends State<LoginScreen> {
         body: body,
       );
 
-      print('Código HTTP: ${response.statusCode}');
-      print('Respuesta: ${response.body}');
+      // ignore: avoid_print
+      print('🔹 Código HTTP: ${response.statusCode}');
+      // ignore: avoid_print
+      print('🔹 Respuesta: ${response.body}');
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        // Guardar datos en SharedPreferences si quieres
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString('usuario', _usernameController.text.trim());
+        await prefs.setString('usuario', _usernameController.text.trim());
 
-        // Redirigir a Calendario
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const CalendarioPage()),
         );
       } else {
-        // Mostrar error al usuario
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -68,13 +71,12 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      print('Error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error de conexión: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -98,7 +100,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // LOGO Y TÍTULO
                   Expanded(
                     flex: 2,
                     child: Column(
@@ -116,8 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-
-                  // FORMULARIO
                   Expanded(
                     flex: 3,
                     child: Container(
@@ -160,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator:
                                   (value) =>
-                                      value == null || value.isEmpty
+                                      (value == null || value.isEmpty)
                                           ? 'Ingrese su usuario'
                                           : null,
                             ),
@@ -200,13 +199,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               validator:
                                   (value) =>
-                                      value == null || value.isEmpty
+                                      (value == null || value.isEmpty)
                                           ? 'Ingrese su contraseña'
                                           : null,
                             ),
                             const SizedBox(height: 30),
-
-                            // BOTÓN LOGIN
                             ElevatedButton(
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
@@ -226,8 +223,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : AppTheme.tituloBoton('Entrar'),
                             ),
                             const SizedBox(height: 20),
-
-                            // OLVIDAR CONTRASEÑA
                             Center(
                               child: TextButton(
                                 onPressed: _goToForgotPassword,

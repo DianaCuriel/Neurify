@@ -1,13 +1,17 @@
+// ==========================================
+// lib/visuales/datosxdia_card.dart  (FIX)
+// ==========================================
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../Fijo/app_theme.dart';
-import '../Modelos/Calendario_model.dart';
-import 'Calendario_DatosXdia_editar.dart';
+
+// ✅ SIEMPRE absolutos y en minúsculas
+import 'package:neurify/fijo/app_theme.dart';
+import 'package:neurify/modelos/calendario_model.dart';
+import 'package:neurify/visuales/calendario_datosxdia_editar.dart';
 
 class DatosxdiaCard extends StatefulWidget {
   final bool isExpanded;
-
   const DatosxdiaCard({Key? key, this.isExpanded = false}) : super(key: key);
 
   @override
@@ -19,10 +23,9 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
 
   @override
   Widget build(BuildContext context) {
-    final modelo = context.watch<CalendarioModel>();
+    final modelo = context.watch<CalendarioModel>(); // ← ahora coincide
     final ahora = DateTime.now();
 
-    // 🔹 Filtrar citas del día actual
     final citasHoy =
         modelo.citas.where((cita) {
           final fecha = cita.fechaHora;
@@ -31,17 +34,15 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
               fecha.day == ahora.day;
         }).toList();
 
-    // 🔹 Filtrar por búsqueda (nombre o motivo)
+    final query = _searchQuery.toLowerCase();
     final citasFiltradas =
         citasHoy.where((cita) {
-          final query = _searchQuery.toLowerCase();
           return cita.nombreCliente.toLowerCase().contains(query) ||
               cita.motivo.toLowerCase().contains(query);
         }).toList();
 
     return Column(
       children: [
-        // 🔍 Campo de búsqueda
         if (widget.isExpanded)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -55,15 +56,9 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                 filled: true,
                 fillColor: Colors.white,
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+              onChanged: (v) => setState(() => _searchQuery = v),
             ),
           ),
-
-        // Si no hay citas
         if (citasHoy.isEmpty)
           Card(
             shape: RoundedRectangleBorder(
@@ -81,7 +76,6 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
             ),
           )
         else
-          // Lista de citas
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.only(bottom: 16),
@@ -99,10 +93,8 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
     );
   }
 
-  //  Tarjeta individual
   Widget _buildCard(Cita cita) {
     final estaCancelada = cita.estado.toLowerCase() == "cancelada";
-
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -113,7 +105,6 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🧾 Información de la cita
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,32 +138,27 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                 ],
               ),
             ),
-
-            // 🔧 Botones (solo si NO está cancelada)
             if (!estaCancelada)
               Column(
                 children: [
-                  // 🖋️ Botón Editar
                   IconButton(
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
-                        builder: (context) => EditarCitaPage(cita: cita),
+                        builder: (_) => EditarCitaPage(cita: cita),
                       );
                     },
                     icon: const Icon(Icons.edit, color: Colors.black),
                     tooltip: "Editar cita",
                   ),
                   const SizedBox(height: 8),
-
-                  // ❌ Botón Cancelar con alerta
                   ElevatedButton(
                     onPressed: () async {
                       final confirmar = await showDialog<bool>(
                         context: context,
-                        builder: (context) {
+                        builder: (_) {
                           return Dialog(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
@@ -183,7 +169,7 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.warning_amber_rounded,
                                     color: Colors.orange,
                                     size: 60,
@@ -211,7 +197,6 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
                                     ),
                                   ),
                                   Text(
@@ -271,15 +256,11 @@ class _DatosxdiaCardState extends State<DatosxdiaCard> {
                           );
                         },
                       );
-
-                      if (confirmar == true) {
-                        final calendarioModel = Provider.of<CalendarioModel>(
-                          context,
-                          listen: false,
+                      if (confirmar == true && mounted) {
+                        await context.read<CalendarioModel>().cancelarCita(
+                          cita,
                         );
-                        await calendarioModel.cancelarCita(cita);
-
-                        if (context.mounted) {
+                        if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Text(
