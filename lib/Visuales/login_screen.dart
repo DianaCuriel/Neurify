@@ -22,6 +22,27 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _prefillUser();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _prefillUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final u = prefs.getString('usuario');
+    if (u != null && mounted) {
+      setState(() => _usernameController.text = u);
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -51,14 +72,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final data = jsonDecode(response.body);
 
+      // if (response.statusCode == 200 && data['success'] == true) {
+      //   final prefs = await SharedPreferences.getInstance();
+      //   await prefs.setString('usuario', _usernameController.text.trim());
+
+      //   if (!mounted) return;
+      //   Navigator.pushReplacement(
+      //     context,
+      //     MaterialPageRoute(builder: (context) => const CalendarioPage()),
+      //   );
+      // }
       if (response.statusCode == 200 && data['success'] == true) {
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('logged_in', true);
         await prefs.setString('usuario', _usernameController.text.trim());
 
         if (!mounted) return;
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const CalendarioPage()),
+          MaterialPageRoute(builder: (_) => const CalendarioPage()),
+          (_) =>
+              false, // <- limpia el stack para que no pueda volver con "back"
         );
       } else {
         if (!mounted) return;

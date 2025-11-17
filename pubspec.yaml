@@ -1,5 +1,5 @@
 name: neurify
-description: "A new Flutter project."
+description: "La app de citas con IA"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -51,9 +51,25 @@ dev_dependencies:
   provider: ^6.0.6
   shared_preferences: ^2.2.3 
   fl_chart: ^0.68.0
-  http: ^1.2.2   
+  http: ^1.2.2  
+  flutter_launcher_icons: ^0.13.1
 
 
+flutter_launcher_icons:
+  android: true
+  ios: false
+  remove_old_icons: true
+  min_sdk_android: 21
+
+  # Ícono adaptativo (Android 8.0+):
+  adaptive_icon_foreground: "assets/images/neurify_icono_azul.png"   # PNG sin fondo, transparente
+  adaptive_icon_background: "#FFFFFF"                      # o una imagen: "assets/images/icono_bg.png"
+
+  # Android 13+ (Themed Icon):
+  # adaptive_icon_monochrome: "assets/images/neurify_logo.png" # blanco puro (#FFFFFF) sobre transparente
+
+  # Fallback para launchers que ignoran adaptative (ej. algunas versiones de MIUI):
+  image_path: "assets/images/neurify_icono_azul.png"           
 
 
 
