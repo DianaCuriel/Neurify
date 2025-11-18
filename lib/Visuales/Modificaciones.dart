@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// ✅ Imports corregidos (absolutos + minúsculas)
 import 'package:neurify/fijo/appbar.dart';
 import 'package:neurify/fijo/bottomnavigator.dart';
 import 'package:neurify/fijo/app_theme.dart';
@@ -19,108 +18,102 @@ class ModificacionesPage extends StatefulWidget {
 
 class _ModificacionesPageState extends State<ModificacionesPage> {
   String filtroTipo = 'Todas';
-  late ModificacionesModel _modelo;
 
   @override
   void initState() {
     super.initState();
-    _modelo = ModificacionesModel();
-    _modelo.fetchBloqueos(); // 👈 Carga los bloqueos desde el servidor
+    // Llama al fetch usando la instancia GLOBAL (ya provista en main.dart)
+    // Usamos un microtask para que el context ya esté montado.
+    Future.microtask(() => context.read<ModificacionesModel>().fetchBloqueos());
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _modelo, // 👈 usa el modelo existente
-      child: Scaffold(
-        appBar: const MiAppBar(title: "Bloqueos"),
-        body: Column(
-          children: [
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DropdownButtonFormField<String>(
-                value: filtroTipo,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+    //  NO ENVUELVAS con otro ChangeNotifierProvider aquí.
+    return Scaffold(
+      appBar: const MiAppBar(title: "Bloqueos"),
+      body: Column(
+        children: [
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: DropdownButtonFormField<String>(
+              value: filtroTipo,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'Todas', child: Text('Todas')),
-                  DropdownMenuItem(
-                    value: 'Puntual',
-                    child: Text('Día puntual'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Rango diario',
-                    child: Text('Rango diario'),
-                  ),
-                  DropdownMenuItem(value: 'Semanal', child: Text('Semanal')),
-                ],
-                onChanged: (val) => setState(() => filtroTipo = val!),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
+              items: const [
+                DropdownMenuItem(value: 'Todas', child: Text('Todas')),
+                DropdownMenuItem(value: 'Puntual', child: Text('Día puntual')),
+                DropdownMenuItem(
+                  value: 'Rango diario',
+                  child: Text('Rango diario'),
+                ),
+                DropdownMenuItem(value: 'Semanal', child: Text('Semanal')),
+              ],
+              onChanged: (val) => setState(() => filtroTipo = val!),
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
 
-            // 👇 Aquí consumimos el modelo
-            Expanded(
-              child: Consumer<ModificacionesModel>(
-                builder: (context, modelo, _) {
-                  final modificacionesFiltradas =
-                      modelo.modificaciones.where((mod) {
-                        switch (filtroTipo) {
-                          case 'Puntual':
-                            return mod.tipo == TipoModificacion.unica;
-                          case 'Rango diario':
-                            return mod.tipo == TipoModificacion.rangoDiario;
-                          case 'Semanal':
-                            return mod.tipo == TipoModificacion.semanal;
-                          default:
-                            return true;
-                        }
-                      }).toList();
+          // Consumimos el modelo global
+          Expanded(
+            child: Consumer<ModificacionesModel>(
+              builder: (context, modelo, _) {
+                final modificacionesFiltradas =
+                    modelo.modificaciones.where((mod) {
+                      switch (filtroTipo) {
+                        case 'Puntual':
+                          return mod.tipo == TipoModificacion.unica;
+                        case 'Rango diario':
+                          return mod.tipo == TipoModificacion.rangoDiario;
+                        case 'Semanal':
+                          return mod.tipo == TipoModificacion.semanal;
+                        default:
+                          return true;
+                      }
+                    }).toList();
 
-                  if (modificacionesFiltradas.isEmpty) {
-                    return const Center(child: Text("No hay modificaciones"));
-                  }
+                if (modificacionesFiltradas.isEmpty) {
+                  return const Center(child: Text("No hay modificaciones"));
+                }
 
-                  return ListView.builder(
-                    itemCount: modificacionesFiltradas.length,
-                    itemBuilder:
-                        (_, i) =>
-                            ModificacionesCard(mod: modificacionesFiltradas[i]),
-                  );
-                },
-              ),
+                return ListView.builder(
+                  itemCount: modificacionesFiltradas.length,
+                  itemBuilder:
+                      (_, i) =>
+                          ModificacionesCard(mod: modificacionesFiltradas[i]),
+                );
+              },
             ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            await showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => const NuevaModificacionPage(),
-            );
-
-            // 👇 Cuando se cierra el modal, recarga los bloqueos
-            _modelo.fetchBloqueos();
-          },
-          tooltip: 'Agregar bloqueo',
-          backgroundColor: AppTheme.primaryColor,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        bottomNavigationBar: const MiBottomNav(currentIndex: 1),
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const NuevaModificacionPage(),
+          );
+          // Recarga desde el MISMO provider global
+          await context.read<ModificacionesModel>().fetchBloqueos();
+        },
+        tooltip: 'Agregar bloqueo',
+        backgroundColor: AppTheme.primaryColor,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      bottomNavigationBar: const MiBottomNav(currentIndex: 1),
     );
   }
 }

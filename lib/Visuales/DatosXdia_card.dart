@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-// ✅ SIEMPRE absolutos y en minúsculas
+// SIEMPRE absolutos y en minúsculas
 import 'package:neurify/fijo/app_theme.dart';
 import 'package:neurify/modelos/calendario_model.dart';
 import 'package:neurify/visuales/calendario_datosxdia_editar.dart';

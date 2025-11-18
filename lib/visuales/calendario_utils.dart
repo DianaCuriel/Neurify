@@ -63,24 +63,20 @@ bool isBlockedAt({
       if (!sameDate(day, mod.fechaUnica!)) return false;
       final ok = hourInRange(target, mod.horaInicio, mod.horaFin);
       if (ok)
-        debugPrint('⛔ Única ${mod.titulo} @ ${DateFormat.Hm().format(target)}');
+        debugPrint(' Única ${mod.titulo} @ ${DateFormat.Hm().format(target)}');
       return ok;
     case TipoModificacion.rangoDiario:
       if (!dateInRange(day, mod.fechaInicio, mod.fechaFinal)) return false;
       final ok = hourInRange(target, mod.horaInicio, mod.horaFin);
       if (ok)
-        debugPrint(
-          '⛔ Diario ${mod.titulo} @ ${DateFormat.Hm().format(target)}',
-        );
+        debugPrint(' Diario ${mod.titulo} @ ${DateFormat.Hm().format(target)}');
       return ok;
     case TipoModificacion.semanal:
       final w = weekdayFromSpanish(mod.diaSemana);
       if (w == null || day.weekday != w) return false;
       final ok = hourInRange(target, mod.horaInicio, mod.horaFin);
       if (ok)
-        debugPrint(
-          '⛔ Semanal ${mod.titulo} @ ${DateFormat.Hm().format(target)}',
-        );
+        debugPrint('Semanal ${mod.titulo} @ ${DateFormat.Hm().format(target)}');
       return ok;
   }
 }

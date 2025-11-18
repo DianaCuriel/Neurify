@@ -22,6 +22,80 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
   DateTime? selectedFecha;
   TimeOfDay? selectedHora;
 
+  // ---------- Helpers ----------
+  DateTime _onlyDate(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  Future<void> _showBlockingDialog({
+    required String title,
+    required String line1,
+    required String line2,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.sutittleStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  line1,
+                  style: AppTheme.bodyStyle,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  line2,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // -----------------------------
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -151,17 +225,42 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
           ),
         ),
         onTap: () async {
+          final now = DateTime.now();
+          final hoy = _onlyDate(now);
+
           final fecha = await showDatePicker(
             context: context,
-            initialDate: DateTime.now(),
-            firstDate: DateTime(2000),
+            initialDate:
+                selectedFecha != null && _onlyDate(selectedFecha!).isAfter(hoy)
+                    ? selectedFecha!
+                    : hoy,
+            // 👉 bloquea elegir fechas anteriores a HOY
+            firstDate: hoy,
             lastDate: DateTime(2100),
           );
           if (fecha != null) {
+            // (extra) si por algún bug dieran una fecha pasada, lo impedimos
+            if (_onlyDate(fecha).isBefore(hoy)) {
+              await _showBlockingDialog(
+                title: "Fecha inválida",
+                line1: "No puedes seleccionar una fecha en el pasado.",
+                line2: "Elige una fecha a partir de hoy.",
+              );
+              return;
+            }
+
             setState(() {
               selectedFecha = fecha;
               fechaController.text =
                   "${fecha.day}/${fecha.month}/${fecha.year}";
+              // si ya había hora y ahora la fecha cambió a hoy y la hora quedó en el pasado, limpiamos la hora
+              if (selectedHora != null &&
+                  _onlyDate(selectedFecha!) == hoy &&
+                  _toMinutes(selectedHora!) <=
+                      _toMinutes(TimeOfDay.fromDateTime(now))) {
+                selectedHora = null;
+                horaController.clear();
+              }
             });
           }
         },
@@ -190,11 +289,31 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
           ),
         ),
         onTap: () async {
+          final now = DateTime.now();
+          final hoy = _onlyDate(now);
+
+          // si no hay fecha elegida aún, asumimos hoy para validar hora
+          final fechaBase =
+              selectedFecha == null ? hoy : _onlyDate(selectedFecha!);
+
           final hora = await showTimePicker(
             context: context,
             initialTime: TimeOfDay.now(),
           );
           if (hora != null) {
+            // Si la fecha elegida es HOY, la hora debe ser estrictamente futura
+            if (fechaBase == hoy) {
+              final selMin = _toMinutes(hora);
+              final nowMin = _toMinutes(TimeOfDay.fromDateTime(now));
+              if (selMin <= nowMin) {
+                await _showBlockingDialog(
+                  title: "Hora inválida",
+                  line1: "No puedes seleccionar una hora pasada.",
+                  line2: "Elige una hora posterior a la hora actual.",
+                );
+                return;
+              }
+            }
             setState(() {
               selectedHora = hora;
               horaController.text = hora.format(context);
@@ -205,7 +324,8 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
     );
   }
 
-  void _guardarCita() {
+  Future<void> _guardarCita() async {
+    // Validación básica
     if (selectedFecha == null || selectedHora == null) {
       ScaffoldMessenger.of(
         context,
@@ -213,6 +333,8 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
       return;
     }
 
+    final now = DateTime.now();
+    final hoy = _onlyDate(now);
     final fechaHoraFinal = DateTime(
       selectedFecha!.year,
       selectedFecha!.month,
@@ -221,7 +343,25 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
       selectedHora!.minute,
     );
 
-    // Crear objeto Cita compatible con tu modelo actualizado
+    // Validaciones “anti pasado” también al guardar (por si algo se coló)
+    if (_onlyDate(selectedFecha!).isBefore(hoy)) {
+      await _showBlockingDialog(
+        title: "Fecha inválida",
+        line1: "No puedes guardar una cita en el pasado.",
+        line2: "Elige una fecha a partir de hoy.",
+      );
+      return;
+    }
+    if (!fechaHoraFinal.isAfter(now)) {
+      await _showBlockingDialog(
+        title: "Fecha y hora inválidas",
+        line1: "La cita debe ser posterior a la fecha y hora actual.",
+        line2: "Ajusta la hora (o fecha) para poder guardar.",
+      );
+      return;
+    }
+
+    // Crear objeto Cita compatible con tu modelo
     final nuevaCita = Cita(
       idEmpresario: 2,
       nombreCliente: nombreController.text.trim(),
@@ -233,6 +373,17 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
     );
 
     context.read<CalendarioModel>().addCita(nuevaCita);
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    nombreController.dispose();
+    telefonoController.dispose();
+    correoController.dispose();
+    motivoController.dispose();
+    fechaController.dispose();
+    horaController.dispose();
+    super.dispose();
   }
 }

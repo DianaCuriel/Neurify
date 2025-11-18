@@ -48,8 +48,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     super.dispose();
   }
 
-  // ==================== Helpers ====================
-
+  // ============== Helpers ==============
   InputDecoration _decoracionCampo(String hint, {IconData? icon}) =>
       InputDecoration(
         hintText: hint,
@@ -66,24 +65,22 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
         ),
       );
 
-  String _formatFecha(DateTime? fecha) {
-    if (fecha == null) return "Seleccionar...";
-    return "${fecha.day}/${fecha.month}/${fecha.year}";
-  }
+  String _formatFecha(DateTime? fecha) =>
+      fecha == null
+          ? "Seleccionar..."
+          : "${fecha.day}/${fecha.month}/${fecha.year}";
 
-  String _formatHora(TimeOfDay? hora) {
-    if (hora == null) return "Seleccionar...";
-    final h = hora.hour.toString().padLeft(2, '0');
-    final m = hora.minute.toString().padLeft(2, '0');
-    return "$h:$m";
-  }
+  String _formatHora(TimeOfDay? hora) =>
+      hora == null
+          ? "Seleccionar..."
+          : "${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}";
 
   Future<DateTime?> _pickFecha(BuildContext context, DateTime? initial) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: initial ?? DateTime.now(),
       firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      lastDate: DateTime(2100),
     );
     return picked ?? initial;
   }
@@ -95,8 +92,78 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     );
   }
 
-  // ==================== UI principal ====================
+  int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
+  Future<void> _showBlockingDialog({
+    required String title,
+    required String line1,
+    required String line2,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.sutittleStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  line1,
+                  style: AppTheme.bodyStyle,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  line2,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // =====================================
+
+  // ============== UI principal ==============
   @override
   Widget build(BuildContext context) {
     final modelo = Provider.of<ModificacionesModel>(context, listen: false);
@@ -122,6 +189,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
             const SizedBox(height: 12),
             _campoTexto(_tituloController, "Título del bloqueo"),
 
+            // Tipo bloqueado (no editable)
             AbsorbPointer(
               absorbing: true,
               child: Opacity(
@@ -173,8 +241,7 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
     );
   }
 
-  // ==================== Componentes ====================
-
+  // ============== Componentes ==============
   Widget _encabezado(BuildContext context, ModificacionesModel modelo) {
     return SizedBox(
       height: 80,
@@ -204,36 +271,123 @@ class _EditarModificacionPageState extends State<EditarModificacionPage> {
                 elevation: 4,
               ),
               onPressed: () async {
+                // ===== Validaciones (idénticas a "agregar") =====
+                if (_tituloController.text.trim().isEmpty) {
+                  await _showBlockingDialog(
+                    title: "Datos incompletos",
+                    line1: "Falta el título del bloqueo.",
+                    line2: "Completa el título para continuar.",
+                  );
+                  return;
+                }
+
+                // Campos requeridos por tipo
+                if (_tipo == TipoModificacion.unica) {
+                  if (_fechaUnica == null ||
+                      _horaInicio == null ||
+                      _horaFin == null) {
+                    await _showBlockingDialog(
+                      title: "Datos incompletos",
+                      line1:
+                          "Para un bloqueo puntual debes elegir fecha, hora inicio y hora fin.",
+                      line2: "Completa los campos faltantes.",
+                    );
+                    return;
+                  }
+                } else if (_tipo == TipoModificacion.rangoDiario) {
+                  if (_fechaInicio == null ||
+                      _fechaFinal == null ||
+                      _horaInicio == null ||
+                      _horaFin == null) {
+                    await _showBlockingDialog(
+                      title: "Datos incompletos",
+                      line1:
+                          "Para un bloqueo diario debes elegir fecha inicio, fecha fin, hora inicio y hora fin.",
+                      line2: "Completa los campos faltantes.",
+                    );
+                    return;
+                  }
+                } else if (_tipo == TipoModificacion.semanal) {
+                  if (_diaSemana == null ||
+                      _horaInicio == null ||
+                      _horaFin == null) {
+                    await _showBlockingDialog(
+                      title: "Datos incompletos",
+                      line1:
+                          "Para un bloqueo semanal debes elegir el día y las horas.",
+                      line2: "Completa los campos faltantes.",
+                    );
+                    return;
+                  }
+                }
+
+                // Hora fin > hora inicio (en todos los tipos)
+                if (_horaInicio != null && _horaFin != null) {
+                  if (_toMinutes(_horaFin!) <= _toMinutes(_horaInicio!)) {
+                    await _showBlockingDialog(
+                      title: "Hora inválida",
+                      line1:
+                          "La hora de fin no puede ser anterior o igual a la hora de inicio.",
+                      line2: "Elige una hora de fin posterior.",
+                    );
+                    return;
+                  }
+                }
+
+                // Rango de fechas válido: fechaFinal >= fechaInicio
+                if (_tipo == TipoModificacion.rangoDiario &&
+                    _fechaInicio != null &&
+                    _fechaFinal != null &&
+                    _fechaFinal!.isBefore(_fechaInicio!)) {
+                  await _showBlockingDialog(
+                    title: "Rango de fechas inválido",
+                    line1:
+                        "La fecha de fin no puede ser anterior a la fecha de inicio.",
+                    line2: "Selecciona una fecha de fin posterior o igual.",
+                  );
+                  return;
+                }
+                // ===== Fin validaciones =====
+
+                // Construir objeto actualizado
                 final now = DateTime.now();
                 final updated = Modificacion(
                   idBloqueo: widget.mod.idBloqueo,
-                  titulo: _tituloController.text,
+                  titulo: _tituloController.text.trim(),
                   tipo: _tipo,
                   diaSemana:
                       _tipo == TipoModificacion.semanal ? _diaSemana : null,
-                  fechaUnica: _fechaUnica,
-                  fechaInicio: _fechaInicio,
-                  fechaFinal: _fechaFinal,
+                  fechaUnica:
+                      _tipo == TipoModificacion.unica ? _fechaUnica : null,
+                  fechaInicio:
+                      _tipo == TipoModificacion.rangoDiario
+                          ? _fechaInicio
+                          : null,
+                  fechaFinal:
+                      _tipo == TipoModificacion.rangoDiario
+                          ? _fechaFinal
+                          : null,
+                  // Guardamos horas como DateTime (solo para serializar HH:mm:ss)
                   horaInicio:
-                      _horaInicio != null
-                          ? DateTime(
+                      _horaInicio == null
+                          ? null
+                          : DateTime(
                             now.year,
                             now.month,
                             now.day,
                             _horaInicio!.hour,
                             _horaInicio!.minute,
-                          )
-                          : null,
+                          ),
                   horaFin:
-                      _horaFin != null
-                          ? DateTime(
+                      _horaFin == null
+                          ? null
+                          : DateTime(
                             now.year,
                             now.month,
                             now.day,
                             _horaFin!.hour,
                             _horaFin!.minute,
-                          )
-                          : null,
+                          ),
                 );
 
                 await modelo.updateBloqueo(updated);

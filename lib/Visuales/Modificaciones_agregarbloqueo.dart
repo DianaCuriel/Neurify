@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// ✅ Imports absolutos en minúsculas
+// Imports absolutos en minúsculas
 import 'package:neurify/fijo/app_theme.dart';
 import 'package:neurify/modelos/modificaciones_model.dart';
 
@@ -26,6 +26,80 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
 
   String tipoBloqueo = 'Puntual';
   String? diaSeleccionado; // <-- ahora String (Lunes, Martes, ...)
+
+  // Helpers ---------------
+
+  int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  Future<void> _showValidationDialog({
+    required String titulo,
+    required String mensajeSuperior,
+    required String mensajeDetalle,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  titulo,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.sutittleStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  mensajeSuperior,
+                  style: AppTheme.bodyStyle,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  mensajeDetalle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // UI --------------------
 
   @override
   Widget build(BuildContext context) {
@@ -284,7 +358,8 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
   }
 
   // ----- GUARDAR -----
-  void _guardarModificacion() {
+  Future<void> _guardarModificacion() async {
+    // Campos obligatorios
     if (tituloController.text.isEmpty ||
         horaInicio == null ||
         horaFin == null ||
@@ -292,18 +367,68 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
         (tipoBloqueo == 'Rango diario' &&
             (fechaInicio == null || fechaFin == null)) ||
         (tipoBloqueo == 'Semanal' && diaSeleccionado == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Faltan campos obligatorios')),
+      await _showValidationDialog(
+        titulo: "Faltan campos obligatorios",
+        mensajeSuperior: "Por favor completa todos los campos requeridos.",
+        mensajeDetalle:
+            "Verifica título, fecha(s), hora(s) y el día de la semana según el tipo.",
       );
       return;
     }
 
-    // Armar fecha/hora:
+    // Validación de horas (aplica a los 3 tipos)
+    final hi = _toMinutes(horaInicio!);
+    final hf = _toMinutes(horaFin!);
+    if (hf <= hi) {
+      await _showValidationDialog(
+        titulo: "Hora fin inválida",
+        mensajeSuperior:
+            "La hora de fin debe ser posterior a la hora de inicio.",
+        mensajeDetalle: "Selecciona una hora mayor para finalizar el bloqueo.",
+      );
+      return;
+    }
+
+    // Validación de fechas para Rango diario
+    if (tipoBloqueo == 'Rango diario' &&
+        fechaInicio != null &&
+        fechaFin != null) {
+      final fi = DateTime(
+        fechaInicio!.year,
+        fechaInicio!.month,
+        fechaInicio!.day,
+      );
+      final ff = DateTime(fechaFin!.year, fechaFin!.month, fechaFin!.day);
+
+      if (ff.isBefore(fi)) {
+        await _showValidationDialog(
+          titulo: "Rango de fechas inválido",
+          mensajeSuperior:
+              "La fecha de fin no puede ser anterior a la fecha de inicio.",
+          mensajeDetalle:
+              "Elige una fecha de finalización igual o posterior a la inicial.",
+        );
+        return;
+      }
+
+      if (ff.isAtSameMomentAs(fi) && hf <= hi) {
+        // Mismo día en rango: además exigimos hora fin > inicio
+        await _showValidationDialog(
+          titulo: "Hora fin inválida (mismo día)",
+          mensajeSuperior:
+              "Para un rango en el mismo día, la hora de fin debe ser posterior a la hora de inicio.",
+          mensajeDetalle: "Elige una hora de fin mayor a la hora de inicio.",
+        );
+        return;
+      }
+    }
+
+    // Armar fecha/hora para serializar
     DateTime? inicioCompleto;
     DateTime? finCompleto;
 
     if (tipoBloqueo != 'Semanal') {
-      // Puntual o rango: combinamos con fecha elegida
+      // Puntual o Rango: combinamos con fecha elegida
       if (fechaInicio != null && horaInicio != null) {
         inicioCompleto = DateTime(
           fechaInicio!.year,
@@ -324,7 +449,7 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
         );
       }
     } else {
-      // Semanal: usamos una fecha dummy (hoy) solo para formar el HH:mm:ss
+      // Semanal: usamos una fecha dummy (hoy) solo para formar HH:mm:ss
       final hoy = DateTime.now();
       inicioCompleto = DateTime(
         hoy.year,
@@ -357,12 +482,12 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
       fechaUnica: tipo == TipoModificacion.unica ? inicioCompleto : null,
       fechaInicio: tipo == TipoModificacion.rangoDiario ? fechaInicio : null,
       fechaFinal: tipo == TipoModificacion.rangoDiario ? fechaFin : null,
-      // Ponemos siempre la hora en DateTime para que toJson() la serialice a "HH:mm:ss"
+      // Guardamos horas como DateTime para serializar "HH:mm:ss"
       horaInicio: inicioCompleto,
       horaFin: finCompleto,
     );
 
-    // Logs útiles
+    // Log útil
     debugPrint(
       '🟦 Guardando bloqueo: '
       'tipo=$tipoBloqueo, '
@@ -374,7 +499,17 @@ class _NuevaModificacionPageState extends State<NuevaModificacionPage> {
       'hFin=${mod.horaFin}',
     );
 
-    context.read<ModificacionesModel>().addBloqueo(mod);
-    Navigator.pop(context);
+    await context.read<ModificacionesModel>().addBloqueo(mod);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    tituloController.dispose();
+    fechaInicioController.dispose();
+    fechaFinController.dispose();
+    horaInicioController.dispose();
+    horaFinController.dispose();
+    super.dispose();
   }
 }

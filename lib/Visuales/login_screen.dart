@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../fijo/app_theme.dart';
 import '../visuales/calendario.dart';
-import '../visuales/forgot_password_screen.dart';
+import 'olvide_contra_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _goToForgotPassword() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+      MaterialPageRoute(builder: (context) => const OlvideContrasenaScreen()),
     );
   }
 

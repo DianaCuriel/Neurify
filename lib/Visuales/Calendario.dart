@@ -7,7 +7,7 @@ import '../fijo/bottomnavigator.dart';
 import '../visuales/calendario_card.dart';
 import '../fijo/app_theme.dart';
 
-// ✅ Importa SIEMPRE desde la misma carpeta y con el mismo caso.
+// Importa SIEMPRE desde la misma carpeta y con el mismo caso.
 import 'package:neurify/modelos/calendario_model.dart';
 import 'package:neurify/modelos/modificaciones_model.dart';
 
