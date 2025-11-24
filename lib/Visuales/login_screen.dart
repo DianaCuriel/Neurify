@@ -49,60 +49,68 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     final url = Uri.parse('http://servidor-morales11.sytes.net:5050/Login.php');
-
     final body = jsonEncode({
       'usuario': _usernameController.text.trim(),
       'contraseña': _passwordController.text.trim(),
     });
 
-    // ignore: avoid_print
-    print("🔹 Enviando login: $body");
+    print("Enviando login: $body");
 
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: body,
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json; charset=UTF-8'},
+            body: body,
+          )
+          .timeout(const Duration(seconds: 12));
 
-      // ignore: avoid_print
-      print('🔹 Código HTTP: ${response.statusCode}');
-      // ignore: avoid_print
-      print('🔹 Respuesta: ${response.body}');
+      print(' Código HTTP: ${response.statusCode}');
+      print(' Respuesta: ${response.body}');
 
-      final data = jsonDecode(response.body);
+      // Evitar crash si el body viene vacío o con JSON inválido
+      Map<String, dynamic>? data;
+      if (response.body.isNotEmpty) {
+        try {
+          data = jsonDecode(response.body) as Map<String, dynamic>;
+        } catch (e) {
+          data = null;
+          print(' JSON inválido: $e');
+        }
+      }
 
-      // if (response.statusCode == 200 && data['success'] == true) {
-      //   final prefs = await SharedPreferences.getInstance();
-      //   await prefs.setString('usuario', _usernameController.text.trim());
-
-      //   if (!mounted) return;
-      //   Navigator.pushReplacement(
-      //     context,
-      //     MaterialPageRoute(builder: (context) => const CalendarioPage()),
-      //   );
-      // }
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 && (data?['success'] == true)) {
+        // Puedes extraer info adicional si el PHP la envía
+        final usuario = (data!['usuario'] ?? {}) as Map<String, dynamic>;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('logged_in', true);
         await prefs.setString('usuario', _usernameController.text.trim());
+        if (usuario['id_credenciales'] != null) {
+          await prefs.setInt(
+            'id_credenciales',
+            int.tryParse('${usuario['id_credenciales']}') ?? 0,
+          );
+        }
+        if (usuario['rol'] != null) {
+          await prefs.setString('rol', '${usuario['rol']}');
+        }
 
         if (!mounted) return;
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const CalendarioPage()),
-          (_) =>
-              false, // <- limpia el stack para que no pueda volver con "back"
+          (_) => false,
         );
       } else {
+        final msg =
+            data?['mensaje'] ??
+            (response.statusCode >= 500
+                ? 'Error del servidor (${response.statusCode}).'
+                : 'Usuario o contraseña incorrectos.');
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              data['mensaje'] ?? 'Usuario o contraseña incorrectos',
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (!mounted) return;

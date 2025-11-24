@@ -4,39 +4,59 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header('Content-Type: application/json');
 
-include 'Conexion.php'; 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
-// Leer JSON recibido desde Flutter
-$input = json_decode(file_get_contents('php://input'), true);
-$usuario = $input['usuario'] ?? '';
-$contraseña = $input['contraseña'] ?? '';
+include 'Conexion.php';
 
-if ($usuario == '' || $contraseña == '') {
-    echo json_encode(['success' => false, 'mensaje' => 'Campos vacíos']);
-    exit;
+const SECRET_KEY = 'mi_clave_secreta'; // la misma que usaron al insertar
+
+$raw = file_get_contents('php://input');
+$input = json_decode($raw, true);
+if (!is_array($input)) {
+  http_response_code(400);
+  echo json_encode(['success' => false, 'mensaje' => 'JSON inválido']);
+  exit;
 }
 
-// Preparar consulta para evitar inyecciones SQL
-$stmt = $conn->prepare("SELECT id_credenciales, USER, rol, password FROM credenciales WHERE USER=? AND password=?");
-$stmt->bind_param("ss", $usuario, $contraseña);
-$stmt->execute();
-$result = $stmt->get_result();
+$usuario    = trim($input['usuario'] ?? '');
+$contrasena = trim($input['contraseña'] ?? '');
 
-if ($result->num_rows > 0) {
-    $user = $result->fetch_assoc();
-
-    echo json_encode([
-        'success' => true,
-        'mensaje' => 'Login exitoso',
-        'usuario' => $user
-    ]);
-} else {
-    echo json_encode([
-        'success' => false,
-        'mensaje' => 'Usuario o contraseña incorrectos'
-    ]);
+if ($usuario === '' || $contrasena === '') {
+  echo json_encode(['success' => false, 'mensaje' => 'Campos vacíos']);
+  exit;
 }
 
-$stmt->close();
-$conn->close();
-?>
+try {
+  $sql = "
+    SELECT id_credenciales, usuario, rol
+    FROM credenciales
+    WHERE usuario = ?
+      AND contraseña = AES_ENCRYPT(?, ?)
+    LIMIT 1
+  ";
+
+  $stmt = $conn->prepare($sql);
+  if (!$stmt) throw new Exception('Error al preparar: '.$conn->error);
+
+  $secret = SECRET_KEY;
+  // orden: usuario, contraseñaPlano, clave
+  $stmt->bind_param('sss', $usuario, $contrasena, $secret);
+
+  if (!$stmt->execute()) throw new Exception('Error al ejecutar: '.$stmt->error);
+
+  $res = $stmt->get_result();
+  if ($res && $res->num_rows === 1) {
+    $user = $res->fetch_assoc();
+    echo json_encode(['success' => true, 'mensaje' => 'Login exitoso', 'usuario' => $user]);
+  } else {
+    echo json_encode(['success' => false, 'mensaje' => 'Usuario o contraseña incorrectos']);
+  }
+
+  $stmt->close();
+  $conn->close();
+
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(['success' => false, 'mensaje' => 'Error del servidor', 'detalle' => $e->getMessage()]);
+}
+ ?>
