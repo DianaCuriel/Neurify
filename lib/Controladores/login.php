@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
 include 'Conexion.php';
 
-const SECRET_KEY = 'mi_clave_secreta'; // la misma que usaron al insertar
+const SECRET_KEY = 'mi_clave_secreta'; 
 
 $raw = file_get_contents('php://input');
 $input = json_decode($raw, true);

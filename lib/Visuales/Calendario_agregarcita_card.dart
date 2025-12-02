@@ -363,7 +363,7 @@ class _AgregarCitaPageState extends State<AgregarCitaPage> {
 
     // Crear objeto Cita compatible con tu modelo
     final nuevaCita = Cita(
-      idEmpresario: 2,
+      idEmpresario: 3,
       nombreCliente: nombreController.text.trim(),
       telefono: telefonoController.text.trim(),
       correo: correoController.text.trim(),

@@ -41,7 +41,7 @@ class Cita {
       return Cita(
         idCitas: int.tryParse(json['id_citas'].toString()),
         idCliente: int.tryParse(json['id_cliente'].toString()),
-        idEmpresario: int.tryParse(json['id_empresario'].toString()) ?? 1,
+        idEmpresario: int.tryParse(json['id_empresario'].toString()) ?? 3,
         nombreCliente: json['nombre_cliente'] ?? '',
         telefono: json['telefono'] ?? '',
         correo: json['correo'] ?? '',

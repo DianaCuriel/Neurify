@@ -113,9 +113,12 @@ class _CalendarioPageState extends State<CalendarioPage> {
                             },
                             child: Row(
                               children: const [
-                                Icon(Icons.swap_vert),
+                                Icon(Icons.arrow_drop_down),
                                 SizedBox(width: 6),
-                                Text("Sort by", style: TextStyle(fontSize: 16)),
+                                Text(
+                                  "Expandir calendario",
+                                  style: TextStyle(fontSize: 16),
+                                ),
                               ],
                             ),
                           ),
@@ -145,7 +148,7 @@ class _CalendarioPageState extends State<CalendarioPage> {
                             child: Row(
                               children: const [
                                 Text(
-                                  "Last 24h",
+                                  "Ultimas 24h",
                                   style: TextStyle(fontSize: 16),
                                 ),
                                 SizedBox(width: 6),
