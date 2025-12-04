@@ -1,99 +1,266 @@
-import 'dart:math';
+// File: lib/modelos/estadisticas_modelo.dart
+//
+// Modelo de estadísticas para Flutter Web/Mobile.
+// Fuente de datos: HTTP POST a Calendario.php { "accion": "listar" }.
+// Filtrado por rango en cliente, armado de series y logs de depuración.
+// No toca la UI ni el diseño.
+
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:collection/collection.dart'; // Para la función groupBy
+import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
-// Modelo de datos para una Cita de la BBDD.
+void _log(String m) => debugPrint('[stats.model] $m');
+
 class Cita {
   final int id;
   final DateTime fecha;
   final String estado;
-  // 'Realizada', 'Cancelada', 'Pendiente', etc.
 
   Cita({required this.id, required this.fecha, required this.estado});
 
-  // Constructor para crear desde un Map de la BBDD.
-  factory Cita.fromMap(Map<String, dynamic> map) {
-    return Cita(
-      id: map['id_citas'],
-      // Asegúrate que el formato de fecha y hora de tu BBDD coincida
-      fecha: DateTime.parse("${map['fecha']} ${map['hora']}"),
-      estado: map['estado'],
-    );
+  static DateTime _parseFechaHora(String? f, String? h) {
+    final fecha = (f ?? '').trim();
+    final hora = (h == null || h.trim().isEmpty) ? '00:00:00' : h.trim();
+    // Por estabilidad en Web.
+    return DateFormat(
+      'yyyy-MM-dd HH:mm:ss',
+    ).parse('$fecha $hora', true).toLocal();
   }
+
+  factory Cita.fromMap(Map<String, dynamic> m) => Cita(
+    id: (m['id_citas'] as num).toInt(),
+    fecha: _parseFechaHora(m['fecha'] as String?, m['hora'] as String?),
+    estado: (m['estado'] ?? '').toString(),
+  );
 }
 
-// Gestiona el estado y la lógica de la página de estadísticas.
 class EstadisticasModelo extends ChangeNotifier {
-  // --- STATE ---
-  String filtroSeleccionado = 'Semanal'; // Filtro activo
-  DateTimeRange? rangoFechasSeleccionado; // Rango de fechas del calendario
+  // --- Filtros
+  int? mesSeleccionado;
+  int? anioSeleccionado;
+  String filtroSeleccionado = 'Semanal';
+  DateTimeRange? rangoFechasSeleccionado;
+
+  // --- Datos UI
   List<FlSpot> datosGraficaCancelaciones = [];
-  // Puntos (X, Y) para la gráfica
   List<FlSpot> datosGraficaCitas = [];
   String datoPrincipalCancelaciones = '';
-  // Textos de resumen
   String datoSecundarioCancelaciones = '';
   String datoPrincipalCitas = '';
   String datoSecundarioCitas = '';
-  bool _isLoading = false; // Estado de carga (true si está buscando datos)
+
+  bool _isLoading = false;
   bool get isLoading => _isLoading;
-  // Carga los datos iniciales al crear.
+
+  // --- Endpoint HTTP (SOLO http como pediste)
+  static const String _HOST = 'servidor-morales11.sytes.net';
+  static const int _PORT = 5050;
+  static const String _PATH_CALENDARIO = '/Calendario.php';
+
   EstadisticasModelo() {
+    final now = DateTime.now();
+    anioSeleccionado = now.year;
+    mesSeleccionado = now.month;
     cargarDatosActuales();
   }
 
-  // --- GETTERS ---
-  // Devuelve el título (ej. "Resumen - Semanal" o "01/01 - 07/01").
-  String get tituloFecha {
-    if (rangoFechasSeleccionado != null) {
-      final formato = DateFormat('dd/MM/yyyy');
-      final startFormatted = formato.format(rangoFechasSeleccionado!.start);
-      final endFormatted = formato.format(rangoFechasSeleccionado!.end);
-      return '$startFormatted - $endFormatted';
-    }
-    return 'Resumen - $filtroSeleccionado';
+  // ===================== Setters =====================
+  // File: lib/modelos/estadisticas_modelo.dart
+  // Agrega este método a tu clase EstadisticasModelo (no cambia diseño).
+  // Útil para Semanal: aplicar lunes–domingo de un día dado sin cambiar el filtro.
+
+  void setSemanaDesdeDia(DateTime dia) {
+    final base = DateTime(dia.year, dia.month, dia.day);
+    final lunes = base.subtract(Duration(days: base.weekday - 1));
+    final domingo = lunes.add(
+      const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+    );
+
+    // Por qué: queremos usar este rango con filtro "Semanal" sin mutar el valor del filtro
+    rangoFechasSeleccionado = DateTimeRange(start: lunes, end: domingo);
+
+    // Recargar con este rango
+    cargarDatosActuales();
+    notifyListeners();
   }
 
-  // --- MÉTODOS PÚBLICOS ---
+  void setMes(int mes) {
+    mesSeleccionado = mes;
+    if (filtroSeleccionado == "Mensual") {
+      rangoFechasSeleccionado = null;
+      cargarDatosActuales();
+    }
+    notifyListeners();
+  }
 
-  // Actualiza el filtro (Semanal, Mensual, Anual) y recarga.
+  void setAnio(int anio) {
+    anioSeleccionado = anio;
+    if (filtroSeleccionado == "Anual" || filtroSeleccionado == "Mensual") {
+      rangoFechasSeleccionado = null;
+      cargarDatosActuales();
+    }
+    notifyListeners();
+  }
+
   void setFiltro(String nuevoFiltro) {
-    if (filtroSeleccionado == nuevoFiltro && rangoFechasSeleccionado == null) {
-      return;
-    }
     filtroSeleccionado = nuevoFiltro;
-    rangoFechasSeleccionado = null; // Limpia el rango personalizado
+    if (nuevoFiltro != "Personalizado") {
+      rangoFechasSeleccionado = null;
+    }
+    if (nuevoFiltro == "Mensual" && mesSeleccionado == null) {
+      mesSeleccionado = DateTime.now().month;
+    }
+    if (nuevoFiltro == "Anual" && anioSeleccionado == null) {
+      anioSeleccionado = DateTime.now().year;
+    }
     cargarDatosActuales();
   }
 
-  // Actualiza a un rango personalizado y recarga.
   void setRangoPersonalizado(DateTimeRange nuevoRango) {
-    if (rangoFechasSeleccionado != null &&
-        rangoFechasSeleccionado!.start == nuevoRango.start &&
-        rangoFechasSeleccionado!.end == nuevoRango.end) {
-      return;
-    }
     rangoFechasSeleccionado = nuevoRango;
     filtroSeleccionado = 'Personalizado';
     cargarDatosActuales();
   }
 
-  // Método principal para cargar/recargar los datos.
+  // ===================== Título =====================
+  // File: lib/modelos/estadisticas_modelo.dart
+  // Reemplaza dentro de tu clase `EstadisticasModelo` el getter `tituloFecha`
+  // y agrega los helpers debajo.
+
+  String get tituloFecha {
+    // Personalizado con rango elegido
+    if (rangoFechasSeleccionado != null) {
+      return _humanizeRange(
+        rangoFechasSeleccionado!.start,
+        rangoFechasSeleccionado!.end,
+      );
+    }
+
+    // Mensual
+    if (filtroSeleccionado == "Mensual" &&
+        mesSeleccionado != null &&
+        anioSeleccionado != null) {
+      final d = DateTime(anioSeleccionado!, mesSeleccionado!, 1);
+      return '${_monAbbr(d)} ${d.year}';
+    }
+
+    // Anual
+    if (filtroSeleccionado == "Anual" && anioSeleccionado != null) {
+      return '${anioSeleccionado!}';
+    }
+
+    // Semanal (semana actual)
+    if (filtroSeleccionado == "Semanal") {
+      final hoy = DateTime.now();
+      final base = DateTime(hoy.year, hoy.month, hoy.day);
+      final lunes = base.subtract(Duration(days: base.weekday - 1));
+      final domingo = lunes.add(const Duration(days: 6));
+      return _humanizeRange(lunes, domingo);
+    }
+
+    return '';
+  }
+
+  // ===== Helpers de formato “moderno” =====
+
+  // Abreviatura de mes en español, siempre minúscula y sin punto final (ene, feb, mar, ...).
+  String _monAbbr(DateTime d) {
+    // DateFormat('MMM', 'es') suele traer 'dic.' → quitamos punto y forzamos lowercase.
+    final raw = DateFormat('MMM', 'es').format(d);
+    final clean = raw.replaceAll('.', '').toLowerCase();
+    return clean;
+  }
+
+  // Día sin cero a la izquierda
+  String _dayNum(DateTime d) => DateFormat('d', 'es').format(d);
+
+  // Rango compacto:
+  // - Mismo mes/año:        1–7 dic 2025
+  // - Mismo año, mes cambia:28 nov – 3 dic 2025
+  // - Año cambia:           28 dic 2025 – 3 ene 2026
+  String _humanizeRange(DateTime a, DateTime b) {
+    final da = DateTime(a.year, a.month, a.day);
+    final db = DateTime(b.year, b.month, b.day);
+
+    final sameYear = da.year == db.year;
+    final sameMonth = sameYear && da.month == db.month;
+
+    if (sameMonth) {
+      return '${_dayNum(da)}–${_dayNum(db)} ${_monAbbr(db)} ${db.year}';
+    }
+
+    if (sameYear) {
+      return '${_dayNum(da)} ${_monAbbr(da)} – ${_dayNum(db)} ${_monAbbr(db)} ${db.year}';
+    }
+
+    return '${_dayNum(da)} ${_monAbbr(da)} ${da.year} – ${_dayNum(db)} ${_monAbbr(db)} ${db.year}';
+  }
+
+  // ===================== HTTP helpers =====================
+  Uri _buildUri({required String path}) {
+    return Uri(
+      scheme: 'http', // ← SOLO HTTP
+      host: _HOST,
+      port: _PORT, // host y port separados
+      path: path,
+    );
+  }
+
+  Future<http.Response> _post(Uri uri, Map<String, dynamic> jsonBody) {
+    final body = jsonEncode(jsonBody);
+    _log('POST $uri body=$jsonBody');
+    return http
+        .post(uri, headers: {'Content-Type': 'application/json'}, body: body)
+        .timeout(const Duration(seconds: 20));
+  }
+
+  Future<List<Cita>> _listarCitasDesdeCalendario() async {
+    final uri = _buildUri(path: _PATH_CALENDARIO);
+    try {
+      final res = await _post(uri, {"accion": "listar"});
+      _log('status=${res.statusCode} bytes=${res.bodyBytes.length}');
+      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map ||
+          decoded['success'] != true ||
+          decoded['citas'] is! List) {
+        throw Exception('Formato inesperado: $decoded');
+      }
+      final List raw = decoded['citas'];
+      final out = <Cita>[];
+      for (final e in raw) {
+        try {
+          out.add(Cita.fromMap(Map<String, dynamic>.from(e)));
+        } catch (pe) {
+          _log('parse cita error: $pe / $e');
+        }
+      }
+      _log('listar -> n=${out.length}');
+      return out;
+    } catch (e) {
+      _log('POST fail ($uri): $e');
+      rethrow;
+    }
+  }
+
+  // ===================== Carga principal =====================
   Future<void> cargarDatosActuales() async {
     _isLoading = true;
     notifyListeners();
-    // Notifica a la UI que empiece a mostrar el loader
 
-    // 1. Determina el rango de fechas para la consulta
-    DateTime fechaFin = DateTime.now();
-    DateTime fechaInicio;
-
+    // rango
+    DateTime inicio, fin;
     if (rangoFechasSeleccionado != null) {
-      // Rango personalizado
-      fechaInicio = rangoFechasSeleccionado!.start;
-      fechaFin = DateTime(
+      inicio = DateTime(
+        rangoFechasSeleccionado!.start.year,
+        rangoFechasSeleccionado!.start.month,
+        rangoFechasSeleccionado!.start.day,
+      );
+      fin = DateTime(
         rangoFechasSeleccionado!.end.year,
         rangoFechasSeleccionado!.end.month,
         rangoFechasSeleccionado!.end.day,
@@ -102,233 +269,153 @@ class EstadisticasModelo extends ChangeNotifier {
         59,
       );
     } else {
-      // Filtros estándar
       switch (filtroSeleccionado) {
-        case 'Mensual':
-          fechaInicio = DateTime(fechaFin.year, fechaFin.month, 1);
+        case "Semanal":
+          final hoy = DateTime.now();
+          final base = DateTime(hoy.year, hoy.month, hoy.day);
+          inicio = base.subtract(Duration(days: hoy.weekday - 1));
+          fin = inicio.add(
+            const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+          );
           break;
-        case 'Anual':
-          fechaInicio = DateTime(fechaFin.year, 1, 1);
+        case "Mensual":
+          inicio = DateTime(anioSeleccionado!, mesSeleccionado!, 1);
+          fin = DateTime(
+            anioSeleccionado!,
+            mesSeleccionado! + 1,
+            0,
+            23,
+            59,
+            59,
+          );
           break;
-        case 'Semanal':
+        case "Anual":
+          inicio = DateTime(anioSeleccionado!, 1, 1);
+          fin = DateTime(anioSeleccionado!, 12, 31, 23, 59, 59);
+          break;
         default:
-          // Lógica para el lunes de esta semana
-          int daysToSubtract = fechaFin.weekday - DateTime.monday;
-          if (daysToSubtract < 0) {
-            daysToSubtract += 7; // Si hoy es domingo (7), resta 6 días
-          }
-          fechaInicio = fechaFin.subtract(Duration(days: daysToSubtract));
-          fechaInicio = DateTime(
-            fechaInicio.year,
-            fechaInicio.month,
-            fechaInicio.day,
-          ); // Empieza a las 00:00 del lunes
-          break;
+          inicio = DateTime.now();
+          fin = DateTime.now();
       }
     }
+    _log('rango: $inicio .. $fin  filtro=$filtroSeleccionado');
 
-    // Asegura que la fecha de inicio no sea posterior a la de fin
-    if (fechaInicio.isAfter(fechaFin)) {
-      fechaInicio = DateTime(fechaFin.year, fechaFin.month, fechaFin.day);
-    }
-
-    // 2. Carga y procesa los datos
     try {
-      List<Cita> citasReales = await _simularDatosDB(fechaInicio, fechaFin);
-      // 3. Filtra los datos obtenidos
-      final citasCanceladas =
-          citasReales.where((c) => c.estado == 'Cancelada').toList();
-      final citasRealizadas =
-          citasReales.where((c) => c.estado == 'Realizada').toList();
-      // 4. Agrupa los datos para las gráficas
-      datosGraficaCancelaciones = _agruparDatosParaGrafica(
-        citasCanceladas,
-        fechaInicio,
-        fechaFin,
-        filtroSeleccionado,
+      // 1) Traer TODAS las citas
+      final todas = await _listarCitasDesdeCalendario();
+
+      // 2) Filtrar por rango en cliente
+      final citas =
+          todas
+              .where((c) => !c.fecha.isBefore(inicio) && !c.fecha.isAfter(fin))
+              .toList();
+      _log('citas en rango=${citas.length} de total=${todas.length}');
+
+      // 3) Totales
+      final confirmadas =
+          citas.where((c) => c.estado.toLowerCase().contains('confirm')).length;
+      final canceladas =
+          citas.where((c) => c.estado.toLowerCase().contains('cancel')).length;
+
+      datoPrincipalCitas = "$confirmadas";
+      datoSecundarioCitas = "Confirmadas";
+      datoPrincipalCancelaciones = "$canceladas";
+      datoSecundarioCancelaciones = "Canceladas";
+
+      // 4) Series
+      _construirDatosGrafica(citas);
+
+      // 5) Fallback visual si hay totales pero sin puntos
+      if (datosGraficaCitas.isEmpty && (confirmadas > 0 || canceladas > 0)) {
+        datosGraficaCitas = [
+          FlSpot(0, confirmadas.toDouble()),
+          FlSpot(1, confirmadas.toDouble()),
+        ];
+        datosGraficaCancelaciones = [
+          FlSpot(0, canceladas.toDouble()),
+          FlSpot(1, canceladas.toDouble()),
+        ];
+      }
+
+      _log(
+        'series listas: citasPts=${datosGraficaCitas.length} cancPts=${datosGraficaCancelaciones.length}',
       );
-      datosGraficaCitas = _agruparDatosParaGrafica(
-        citasRealizadas,
-        fechaInicio,
-        fechaFin,
-        filtroSeleccionado,
-      );
-      // 5. Actualiza los textos de resumen
-      _actualizarTextosResumen(
-        citasCanceladas,
-        citasRealizadas,
-        filtroSeleccionado,
-        fechaInicio, // Pasa la fecha de inicio para las etiquetas
-      );
-    } catch (e) {
-      datoPrincipalCancelaciones = "Error al cargar datos";
-      datoSecundarioCancelaciones = "Revisa la conexión o la base de datos";
-      datoPrincipalCitas = "Error al cargar datos";
-      datoSecundarioCitas = "";
-      datosGraficaCancelaciones = [];
+    } catch (e, st) {
+      _log('❌ cargarDatosActuales: $e\n$st');
+      datoPrincipalCitas = "Error";
+      datoSecundarioCitas = "No disponible";
+      datoPrincipalCancelaciones = "";
+      datoSecundarioCancelaciones = "";
       datosGraficaCitas = [];
+      datosGraficaCancelaciones = [];
     }
 
     _isLoading = false;
     notifyListeners();
-    // Notifica a la UI que se redibuje
   }
 
-  // --- MÉTODOS INTERNOS ---
+  // ===================== Series =====================
+  void _construirDatosGrafica(List<Cita> citas) {
+    datosGraficaCitas = [];
+    datosGraficaCancelaciones = [];
+    if (citas.isEmpty) return;
 
-  // Convierte una List<Cita> en una List<FlSpot> para la gráfica.
-  List<FlSpot> _agruparDatosParaGrafica(
-    List<Cita> citas,
-    DateTime fechaInicio,
-    DateTime fechaFin,
-    String filtro,
-  ) {
-    if (citas.isEmpty) return [];
-    if (filtro == 'Anual') {
-      // Agrupa por mes (1 a 12)
-      final gruposPorMes = groupBy(citas, (c) => c.fecha.month);
-      // Genera 12 puntos (spots), uno por cada mes (índice 0 = Ene, 11 = Dic)
-      return List.generate(12, (indexMes) {
-        int mes = indexMes + 1;
-        int total = gruposPorMes[mes]?.length ?? 0;
-        return FlSpot(indexMes.toDouble(), total.toDouble());
-      });
-    }
-
-    // Agrupa por día para 'Semanal', 'Mensual' o 'Personalizado'
-    int numDias = fechaFin.difference(fechaInicio).inDays + 1;
-    // Evita numDias negativo si el rango es de un solo día
-    if (numDias <= 0) numDias = 1;
-
-    final gruposPorDia = <int, int>{};
-
-    for (var cita in citas) {
-      // Asegura que la cita esté dentro del rango
-      if (cita.fecha.isBefore(fechaInicio) || cita.fecha.isAfter(fechaFin)) {
-        continue;
-      }
-      int diaIndex = cita.fecha.difference(fechaInicio).inDays;
-      if (diaIndex >= 0 && diaIndex < numDias) {
-        gruposPorDia.update(diaIndex, (value) => value + 1, ifAbsent: () => 1);
-      }
-    }
-
-    // Genera un punto por cada día en el rango
-    return List.generate(numDias, (indexDia) {
-      double total = (gruposPorDia[indexDia] ?? 0).toDouble();
-      return FlSpot(indexDia.toDouble(), total);
-    });
-  }
-
-  // Calcula los textos de resumen (totales y picos).
-  void _actualizarTextosResumen(
-    List<Cita> canceladas,
-    List<Cita> realizadas,
-    String filtro,
-    DateTime fechaInicio,
-  ) {
-    datoPrincipalCancelaciones = "Total Cancelaciones: ${canceladas.length}";
-    datoPrincipalCitas = "Total Citas: ${realizadas.length}";
-
-    if (datosGraficaCancelaciones.isNotEmpty) {
-      final picoCancel = datosGraficaCancelaciones.reduce(
-        (a, b) => a.y > b.y ? a : b,
-      );
-      String etiquetaPico = _getEtiquetaPico(
-        picoCancel.x.toInt(),
-        filtro,
-        fechaInicio,
-      );
-      datoSecundarioCancelaciones =
-          "Pico: $etiquetaPico (${picoCancel.y.toInt()})";
-    } else {
-      datoSecundarioCancelaciones = "Pico: N/A (0)";
-    }
-
-    if (datosGraficaCitas.isNotEmpty) {
-      final picoCitas = datosGraficaCitas.reduce((a, b) => a.y > b.y ? a : b);
-      String etiquetaPico = _getEtiquetaPico(
-        picoCitas.x.toInt(),
-        filtro,
-        fechaInicio,
-      );
-      datoSecundarioCitas = "Pico: $etiquetaPico (${picoCitas.y.toInt()})";
-    } else {
-      datoSecundarioCitas = "Pico: N/A (0)";
-    }
-  }
-
-  // Helper para formatear la etiqueta del eje X (ej. 'Lun', 'Ene', 'Día 5').
-  String _getEtiquetaPico(int index, String filtro, DateTime fechaInicio) {
-    switch (filtro) {
-      case 'Anual':
-        const meses = [
-          'Ene',
-          'Feb',
-          'Mar',
-          'Abr',
-          'May',
-          'Jun',
-          'Jul',
-          'Ago',
-          'Sep',
-          'Oct',
-          'Nov',
-          'Dic',
-        ];
-        return (index >= 0 && index < 12) ? meses[index] : 'N/A';
+    switch (filtroSeleccionado) {
       case 'Semanal':
-        const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-        return (index >= 0 && index < 7) ? dias[index] : 'N/A';
-      case 'Personalizado':
       case 'Mensual':
+      case 'Personalizado':
+        _construirPorDia(citas);
+        break;
+      case 'Anual':
+        _construirPorMes(citas);
+        break;
       default:
-        // Muestra la fecha real, ej: "05/11"
-        try {
-          final fecha = fechaInicio.add(Duration(days: index));
-          return DateFormat('dd/MM').format(fecha);
-        } catch (e) {
-          return 'Día ${index + 1}';
-        }
+        _construirPorDia(citas);
+        break;
     }
   }
 
-  // --- FUNCIÓN DE SIMULACIÓN (REEMPLAZAR) ---
-  Future<List<Cita>> _simularDatosDB(DateTime inicio, DateTime fin) async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    // Simula espera de red
+  void _construirPorDia(List<Cita> citas) {
+    final porDia = groupBy<Cita, DateTime>(
+      citas,
+      (c) => DateTime(c.fecha.year, c.fecha.month, c.fecha.day),
+    );
+    final dias = porDia.keys.toList()..sort();
 
-    List<Cita> citasSimuladas = [];
-    final random = Random();
-    int numDias = max(1, fin.difference(inicio).inDays + 1);
-
-    for (int i = 0; i < numDias; i++) {
-      DateTime diaActual = inicio.add(Duration(days: i));
-      // Simula horas aleatorias
-      int horaRandom = 8 + random.nextInt(10); // Entre 8am y 5pm
-
-      int numCanceladas = random.nextInt(4);
-      for (int c = 0; c < numCanceladas; c++) {
-        citasSimuladas.add(
-          Cita(
-            id: i * 100 + c,
-            fecha: diaActual.add(Duration(hours: horaRandom + c)),
-            estado: 'Cancelada',
-          ),
-        );
-      }
-
-      int numRealizadas = 5 + random.nextInt(10);
-      for (int r = 0; r < numRealizadas; r++) {
-        citasSimuladas.add(
-          Cita(
-            id: i * 200 + r,
-            fecha: diaActual.add(Duration(hours: horaRandom + r)),
-            estado: 'Realizada',
-          ),
-        );
-      }
+    for (int i = 0; i < dias.length; i++) {
+      final lista = porDia[dias[i]]!;
+      final conf =
+          lista
+              .where((c) => c.estado.toLowerCase().contains('confirm'))
+              .length
+              .toDouble();
+      final canc =
+          lista
+              .where((c) => c.estado.toLowerCase().contains('cancel'))
+              .length
+              .toDouble();
+      datosGraficaCitas.add(FlSpot(i.toDouble(), conf));
+      datosGraficaCancelaciones.add(FlSpot(i.toDouble(), canc));
     }
-    return citasSimuladas;
+  }
+
+  void _construirPorMes(List<Cita> citas) {
+    final porMes = groupBy<Cita, int>(citas, (c) => c.fecha.month);
+    for (int i = 1; i <= 12; i++) {
+      final lista = porMes[i] ?? [];
+      final conf =
+          lista
+              .where((c) => c.estado.toLowerCase().contains('confirm'))
+              .length
+              .toDouble();
+      final canc =
+          lista
+              .where((c) => c.estado.toLowerCase().contains('cancel'))
+              .length
+              .toDouble();
+      final x = (i - 1).toDouble();
+      datosGraficaCitas.add(FlSpot(x, conf));
+      datosGraficaCancelaciones.add(FlSpot(x, canc));
+    }
   }
 }
